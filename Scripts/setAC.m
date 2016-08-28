@@ -1,4 +1,4 @@
-function [ outAC ] = setAC( iAC  , f , fg , N4TH )
+function [ outAC , amp ] = setAC( iAC  , f , fg , N4TH )
 %setAC(iAC,f,fg,N4TH) executes feedback loop on AC current
 %   iAC - desired AC current
 %   f   - frequency

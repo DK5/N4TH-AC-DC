@@ -10,8 +10,6 @@ supCurrent(iDC,pwr_obj);% set current
 output(1,pwr_obj);
 
 % read DC current
-fprintf(N4TH,'COUPLI,PHASE1,DCONLY'); % set DC coupling
-fprintf(N4TH,'FAST,ON');	% fast communication mode - on
 pause(5);
 outDC = getDC(N4TH);
 
@@ -41,6 +39,4 @@ while abs(outDC/iDC - 1) > 0.002
     pause(5);                   % wait for power supply
     outDC = getDC(N4TH);        % get DC current
 end
-
-fprintf(N4TH,'FAST,OFF');	% fast communication mode - off
 end

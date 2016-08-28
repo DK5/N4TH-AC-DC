@@ -3,25 +3,27 @@ output(0,pwr_obj);      % turn off power supply
 supVoltage(5,pwr_obj);  % supply 5V (DC)
 
 for iDC = DClist
-    setDC(iDC,pwr_obj,N4TH);
+    setDC(iDC,pwr_obj,N4TH);	% set DC current
     for f = frequency
         HP8904A( fg, 0, 440, 'sine', 2, 'on', 'B') % turn off function generator
         
         for iAC = AClist
-            % av = amplification
-            setAC(iAC,f,fg,N4TH);
-            [I,tempdata,amp] = N4TH_1P(iAC,f,av,round(averaging),N4TH,fg);
-            freq=['F' num2str(f) 'Hz'];
-            amplitude=['amp' num2str(100*(round(10*I))) 'mA'];
-            data.(amplitude).(freq)=tempdata.(amplitude).(freq);
+            [outAC,amp] = setAC(iAC,f,fg,N4TH);   % set AC current
+            tempdata = N4TH_1P(iAC,f,av,round(averaging),N4TH,fg);  % measure 1 point
+            freq = ['F',num2str(f),'Hz'];
+            amplitude = ['amp',num2str(100*(round(10*outAC))),'mA'];
+            data.(amplitude).(freq) = tempdata.(amplitude).(freq);
             fprintf ('current %0.1fA | Frequency %iHz | Amplitude %0.0fmV | Power %0.3fuW\n',iAC,f,1000*amp,1E6*data.(amplitude).(freq).average(1,3))
-            if abs(I-iAC)>0.1;
-                fprintf ('Warning! current is %i instead of %i\n',I,iAC); 
+            if abs(outAC-iAC)>0.1;
+                fprintf ('Warning! current is %i instead of %i\n',outAC,iAC); 
             end
 %             pause (iAC*(3+f^2/2.5E7));
             pause (1+iAC*f/10000);
         end
-        
+        outDC = getDC(N4TH);    % check DC current again
+        if (outDC/iDC - 1) < 0.01
+            setDC(iDC,pwr_obj,N4TH);    % set DC current
+        end
     end
     
     data.iAC = sort(AClist);
@@ -36,7 +38,7 @@ for iDC = DClist
     fprintf ('Total elapsed time %0.1f minutes \n',ttime/60)
     
     data.loss = LossCalculation(data);
-    data.lossH3 = LossCalculationH3(data);
+    data.lossH3 = LossCalculationH3(data); 
     for i = 1:numel(data.frequency)
         data.lossPVPC(:,i) = data.loss(:,i)./(data.frequency(i)*volume);
     end
