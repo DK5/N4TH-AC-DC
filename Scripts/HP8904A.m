@@ -1,5 +1,6 @@
 function HP8904A( obj, ampl, freq, form, out, state, channel)  
-
+% HP8904A( obj, ampl, freq, form, out, state, channel) sets the function
+% generator properties
 %   obj - 8904A multifunction GPIB object
 %   ampl is the desired amplitude
 %   freq is the desired frequency

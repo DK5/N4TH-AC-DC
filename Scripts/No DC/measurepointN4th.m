@@ -1,22 +1,22 @@
-function [I,waves,amp]=measurepointN4th(current,f,av,averaging,N4th,fg)
-[amp,I]=CalibratorN4th (f,current, fg, N4th);%disp('Xyu');
+function [I,waves,amp] = measurepointN4th(current,f,av,averaging,N4th,fg)
+[amp,I] = CalibratorN4th(f,current, fg, N4th);%disp('Xyu');
 freq=['F' num2str(f) 'Hz'];
 amplitude=['amp' num2str(100*(round(10*I))) 'mA'];
 for i=1:averaging
     reading=[];
-    fprintf(N4th,  'FAST,ON');  
+    fprintf(N4th,  'FAST,ON');
     pause(1.5);
     while isempty(reading)
         
         pause(.5);
         reading=query(N4th,  'LCR?');
-%         fprintf(N4th,  'FAST,OFF');
+        %         fprintf(N4th,  'FAST,OFF');
     end
     LCR = textscan(reading, '%s', 'Delimiter', ',', 'CommentStyle', '\','headerlines',0);
     LCR=LCR{:}; LCR=str2double(LCR);
     reading=[];
     while isempty(reading)
-%         fprintf(N4th,  'FAST,ON');
+        %         fprintf(N4th,  'FAST,ON');
         pause(.5);
         reading=query(N4th,  'POWER?');
         
@@ -39,13 +39,13 @@ for i=1:averaging
     Vac(i)=data(13);
     Vdc(i)=data(14);
     Vcf(i)=data(17);
-    P_f(i)=data(3); % power at fundamental f
-    VA_f(i)=data(5); % power at fundamental f
-    P_dc(i)=data(10); %DC power
-    P_h(i)=data(11); %power at specific harmonic (default 3)
+    P_f(i)=data(3);     % power at fundamental f
+    VA_f(i)=data(5);	% power at fundamental f
+    P_dc(i)=data(10);	% DC power
+    P_h(i)=data(11);	% power at specific harmonic (default 3)
 end
 waves.(amplitude).(freq).average(1,1)=mean(Irms); %     1 TRMS Current
-waves.(amplitude).(freq).average(1,2)=mean(Freq); %     2 Frequency
+waves.(amplitude).(freq).average(1,2)=mean(Freq); %     2 Frequency 
 waves.(amplitude).(freq).average(1,3)=abs(mean(P)/av); %3 Active power P [W]
 waves.(amplitude).(freq).average(1,4)=mean(VA)/av; %    4 Apparent power S [VA]
 waves.(amplitude).(freq).average(1,5)=mean(PHI); %      5 Angle PHI

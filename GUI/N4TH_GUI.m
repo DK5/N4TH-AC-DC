@@ -22,7 +22,7 @@ function varargout = N4TH_GUI(varargin)
 
 % Edit the above text to modify the response to help N4TH_GUI
 
-% Last Modified by GUIDE v2.5 17-Aug-2016 15:00:43
+% Last Modified by GUIDE v2.5 27-Aug-2016 18:12:31
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -54,6 +54,9 @@ function N4TH_GUI_OpeningFcn(hObject, eventdata, handles, varargin)
 
 % Choose default command line output for N4TH_GUI
 handles.output = hObject;
+
+defaultanswer = {'Ni-MgB2 ','round','1_3mm','Vtap 50mm','v1','1','1'};
+setappdata(0,'defAns',defaultanswer);
 
 % Update handles structure
 guidata(hObject, handles);
@@ -147,22 +150,27 @@ function btnStart_Callback(hObject, eventdata, handles)
 % hObject    handle to btnStart (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+fStr = get(handles.edtFreq,'string');
+frequency = str2num(cell2mat(fStr));
+acStr = get(handles.edtAC,'string');
+iAC = str2num(cell2mat(acStr));
+dcStr = get(handles.edtDC,'string');
+iDC = str2num(cell2mat(dcStr));
 
 
-
-function edtSetTemp_Callback(hObject, eventdata, handles)
-% hObject    handle to edtSetTemp (see GCBO)
+function edtTemp_Callback(hObject, eventdata, handles)
+% hObject    handle to edtTemp (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: get(hObject,'String') returns contents of edtSetTemp as text
-%        str2double(get(hObject,'String')) returns contents of edtSetTemp as a double
+% Hints: get(hObject,'String') returns contents of edtTemp as text
+%        str2double(get(hObject,'String')) returns contents of edtTemp as a double
 
 
 % --- Executes during object creation, after setting all properties.
-function edtSetTemp_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to edtSetTemp (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
+function edtTemp_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to edtTemp (see GCBO)
+% eventdata  reserved - to be defined in a future version of MAoTLAB
 % handles    empty - handles not created until after all CreateFcns called
 
 % Hint: edit controls usually have a white background on Windows.
@@ -177,3 +185,30 @@ function btn1Point_Callback(hObject, eventdata, handles)
 % hObject    handle to btn1Point (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+pcell = inputdlg({'Frequncy (Hz):','AC current (Amps):','DC current (Amps):'});
+if isempty(pcell)
+    warndlg('Canceled operation');
+    return;
+end
+Freq = str2num(pcell{1});
+iAC = str2num(pcell{2});
+iDC = str2num(pcell{3});
+
+
+% --- Executes on button press in btnProp.
+function btnProp_Callback(hObject, eventdata, handles)
+% hObject    handle to btnProp (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+question={'Wire type:','Wire shape:','Wire dimensions:','Vtap distance',...
+	'Version','Averaging (lower is faster)', 'Amplification'};
+defaultanswer = getappdata(0,'defAns'); % get default answers
+run = inputdlg(question,'Input',1,defaultanswer);
+if isempty(run)
+    warndlg('No parameters were changed, the script will use the previus ones','Window Closed');
+    return;
+end
+setappdata(0,'defAns',run);
+tempStr = [get(handles.edtTemp,'string'),'K'];
+run = [run(1:4);{tempStr};run(5:end)];
+runtitle = strjoin(run(1:6)');
