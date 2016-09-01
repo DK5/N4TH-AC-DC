@@ -1,5 +1,5 @@
 % Main loop
-output(0,pwr_obj);      % turn off power supply
+outputHP(0,pwr_obj);      % turn off power supply
 supVoltage(5,pwr_obj);  % supply 5V (DC)
 
 for iDC = DClist
@@ -10,8 +10,8 @@ for iDC = DClist
         for iAC = AClist
             [outAC,amp] = setAC(iAC,f,fg,N4TH);   % set AC current
             tempdata = N4TH_1P(iAC,f,av,round(averaging),N4TH,fg);  % measure 1 point
-            freq = ['F',num2str(f),'Hz'];
-            amplitude = ['amp',num2str(100*(round(10*outAC))),'mA'];
+            freq = ['F',num2str(f),'Hz'];   % field title
+            amplitude = ['amp',num2str(100*(round(10*outAC))),'mA'];    % field title
             data.(amplitude).(freq) = tempdata.(amplitude).(freq);
             fprintf ('current %0.1fA | Frequency %iHz | Amplitude %0.0fmV | Power %0.3fuW\n',iAC,f,1000*amp,1E6*data.(amplitude).(freq).average(1,3))
             if abs(outAC-iAC)>0.1;
@@ -25,6 +25,7 @@ for iDC = DClist
             setDC(iDC,pwr_obj,N4TH);    % set DC current
         end
     end
+    outputHP(0,pwr_obj);    % turn off DC supply
     
     data.iAC = sort(AClist);
     data.frequency = sort(frequency);

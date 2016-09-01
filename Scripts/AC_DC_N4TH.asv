@@ -1,71 +1,33 @@
-%%  This section to run !!!!!
-volume=0.05*(0.0013/2)^2*pi; % Ask about sample volume (GUI)
-question={'Wire type:','Wire shape:','Wire dimensions:','Vtap distance',...
-    'Temperature','Version','Averaging (lower is faster)', 'Amplification'};
-if exist('run','var')
-    defaultanswer=run;
-else
-    defaultanswer={'Ni-MgB2 ',' round',' 1_3mm ',' Vtap 50mm',' 10K ',' v1','1', '1'};
-end
-
-choice=menu ('Change parameters?','Yes','No');
-if choice==1
-    run=inputdlg(question,'Input',1,defaultanswer);
-    runtitle = cell2mat(strcat(run(1),run(2),run(3),run(4),run(5),run(6)));
-end
-
-frequency = sort([57 117:100:517 617:200:1017 1517:500:3017 4017:1000:18017]);
-AClist=sort([8 6 5 4 1 0.5 2 3 10]);
-initQ={'Please enter scanning frequencies:','Please enter AC current values (RMS):'};
-initA={num2str(frequency),num2str((AClist))};
-options.Resize='on';
-options.WindowStyle='normal';
-init=inputdlg(initQ,'Measurement parameters',6,initA,options);
-% msg=msgbox('Don''t forget to charge capacitors and disconnect them from power supply','Reminder', 'warn');
-% waitfor(msg);
-choice=menu ('Start measurement?','Yes','Cancel');
-frequency=str2num(cell2mat(init(1)));
-AClist = str2num(cell2mat(init(2)));
-
-    av=str2num(cell2mat(run(8)));
-    averaging=str2num(cell2mat(run(7)));
-    clear data;
-    data.title=run;
-    data.list={'TRMS current' 'Frequency' ...
-        'Active power P [W]' 'Apparent power S [VA]'...
-        'Angle PHI' 'Reactive Q [var]'...
-        'Active serial resistance Rser'...
-        'Reactive serial resistance Xser' 'Impedance'...
-        'AC Voltage' 'DC voltage' 'TRMS Voltage'...
-        'Voltage Crest Factor' 'AC current' 'DC current'};
-    
-%% Main loop
-output(0,pwr_obj);      % turn off power supply
+% Main loop
+outputHP(0,pwr_obj);      % turn off power supply
 supVoltage(5,pwr_obj);  % supply 5V (DC)
 
 for iDC = DClist
-    setDC(iDC,pwr_obj,N4TH);
+    setDC(iDC,pwr_obj,N4TH);	% set DC current
     for f = frequency
         HP8904A( fg, 0, 440, 'sine', 2, 'on', 'B') % turn off function generator
         
         for iAC = AClist
-            % av = amplification
-            setAC(iAC,f,fg,N4TH);
-            [I,tempdata,amp] = N4TH_1P(iAC,f,av,round(averaging),N4TH,fg);
-            freq=['F' num2str(f) 'Hz'];
-            amplitude=['amp' num2str(100*(round(10*I))) 'mA'];
-            data.(amplitude).(freq)=tempdata.(amplitude).(freq);
+            [outAC,amp] = setAC(iAC,f,fg,N4TH);   % set AC current
+            tempdata = N4TH_1P(iAC,f,av,round(averaging),N4TH,fg);  % measure 1 point
+            freq = ['F',num2str(f),'Hz'];   % field title
+            amplitude = ['amp',num2str(100*(round(10*outAC))),'mA'];    % field title
+            data.(amplitude).(freq) = tempdata.(amplitude).(freq);
             fprintf ('current %0.1fA | Frequency %iHz | Amplitude %0.0fmV | Power %0.3fuW\n',iAC,f,1000*amp,1E6*data.(amplitude).(freq).average(1,3))
-            if abs(I-iAC)>0.1;
-                fprintf ('Warning! current is %i instead of %i\n',I,iAC); 
+            if abs(outAC-iAC)>0.1;
+                fprintf ('Warning! current is %i instead of %i\n',outAC,iAC); 
             end
 %             pause (iAC*(3+f^2/2.5E7));
             pause (1+iAC*f/10000);
         end
-        
+        outDC = getDC(N4TH);    % check DC current again
+        if (outDC/iDC - 1) < 0.01
+            setDC(iDC,pwr_obj,N4TH);    % set DC current
+        end
     end
+    outputHP(0,pwr_obj);    % turn off DC supply
     
-    data.iAC = sort(AClist);
+    data.iAC = sort(AClist);            % 
     data.frequency = sort(frequency);
     
     HP8904A( fg, 0, 440, 'sine', 2, 'on', 'B');	% turn off function generator 
@@ -77,7 +39,7 @@ for iDC = DClist
     fprintf ('Total elapsed time %0.1f minutes \n',ttime/60)
     
     data.loss = LossCalculation(data);
-    data.lossH3 = LossCalculationH3(data);
+    data.lossH3 = LossCalculationH3(data); 
     for i = 1:numel(data.frequency)
         data.lossPVPC(:,i) = data.loss(:,i)./(data.frequency(i)*volume);
     end

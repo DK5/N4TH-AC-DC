@@ -22,7 +22,7 @@ function varargout = N4TH_GUI(varargin)
 
 % Edit the above text to modify the response to help N4TH_GUI
 
-% Last Modified by GUIDE v2.5 27-Aug-2016 18:12:31
+% Last Modified by GUIDE v2.5 30-Aug-2016 14:01:38
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -55,14 +55,88 @@ function N4TH_GUI_OpeningFcn(hObject, eventdata, handles, varargin)
 % Choose default command line output for N4TH_GUI
 handles.output = hObject;
 
-defaultanswer = {'Ni-MgB2 ','round','1_3mm','Vtap 50mm','v1','1','1','0.05*(0.0013/2)^2*pi'};
+% default answers
+defaultanswer = {'Ni-MgB2 ','round','1_3mm','Vtap 50mm','v1','1','1','0.1','20','0.05*(0.0013/2)^2*pi'};
 setappdata(0,'defAns',defaultanswer);
+
+Isrc = num2str(defaultanswer{8});
+setappdata(0,'Isrc',Isrc);
+
+% connect to objects
+devlist = {'Couldn''t connect to the following devices:'}; ind = 2;
+try     % N4TH
+    N4TH = instrfind('Type', 'serial', 'Port', 'COM3', 'Tag', '');
+    N4TH = serial('COM3');
+    fopen(N4TH);
+    set(N4TH,'Timeout',10);
+    setappdata(0,'N4TH',N4TH);
+catch
+%     errordlg('Couldn''t connect to the power supplier','Connection Error');
+    devlist{ind,1} = '    - N4TH'; ind = ind + 1;
+end
+
+try     % function generator
+    fg = GPconnect(10);    
+    setappdata(0,'fg',fg);
+catch
+%     errordlg('Couldn''t connect to the function generator','Connection Error');
+    devlist{ind,1} = '    - Function Generator'; ind = ind + 1;
+end
+
+try     % power supplier
+    pwr_obj = GPconnect(5);
+    setappdata(0,'pwr_obj',pwr_obj);
+catch
+%     errordlg('Couldn''t connect to the power supplier','Connection Error');
+    devlist{ind,1} = '    - Power Supplier'; ind = ind + 1;
+end
+
+try     % voltmeter
+    volt_obj = GPconnect(9);     % check the address
+    prepVolt(volt_obj);
+    setappdata(0,'volt_obj',volt_obj);
+catch
+%     errordlg('Couldn''t connect to the voltmeter','Connection Error');
+    devlist{ind,1} = '    - Voltmeter'; ind = ind + 1;
+end
+
+try     % YOKOGAWA
+    yoko_obj = GPconnect(3);     % check the address
+    setYokoCurrent(Isrc,yoko_obj);
+    setappdata(0,'yoko_obj',yoko_obj);
+catch
+%     errordlg('Couldn''t connect to the Yokogawa','Connection Error');
+    devlist{ind,1} = '    - YOKOGAWA'; ind = ind + 1;
+end
+
+try     % XFR
+    xfr_obj = GPconnect(14);     % check the address
+    thermoI(xfr_obj);
+    setappdata(0,'xfr_obj',xfr_obj);
+catch
+%     errordlg('Couldn''t connect to the Yokogawa','Connection Error');
+    devlist{ind,1} = '    - XANTREX XFR DC Power supply'; ind = ind + 1;
+end
+
+if ind>2
+    errordlg(devlist,'Connection Error');
+end
+
+% set temperature timer
+TempControl_timer = @(~,~) TempControl(handles);
+tempTimer = timer;
+tempTimer.Name = 'Temperatre Control Timer';
+tempTimer.TimerFcn = TempControl_timer;
+tempTimer.Period = 0.02;
+tempTimer.ExecutionMode = 'fixedRate';
+start(tempTimer);
+setappdata(0,'tempTimer',tempTimer);
 
 % Update handles structure
 guidata(hObject, handles);
 
 % UIWAIT makes N4TH_GUI wait for user response (see UIRESUME)
-% uiwait(handles.figure1);
+% uiwait(handles.N4TH_GUI);
 
 
 % --- Outputs from this function are returned to the command line.
@@ -74,16 +148,6 @@ function varargout = N4TH_GUI_OutputFcn(hObject, eventdata, handles)
 
 % Get default command line output from handles structure
 varargout{1} = handles.output;
-
-
-
-function edtFreq_Callback(hObject, eventdata, handles)
-% hObject    handle to edtFreq (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of edtFreq as text
-%        str2double(get(hObject,'String')) returns contents of edtFreq as a double
 
 
 % --- Executes during object creation, after setting all properties.
@@ -99,16 +163,6 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
 end
 
 
-
-function edtAC_Callback(hObject, eventdata, handles)
-% hObject    handle to edtAC (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of edtAC as text
-%        str2double(get(hObject,'String')) returns contents of edtAC as a double
-
-
 % --- Executes during object creation, after setting all properties.
 function edtAC_CreateFcn(hObject, eventdata, handles)
 % hObject    handle to edtAC (see GCBO)
@@ -120,16 +174,6 @@ function edtAC_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
-
-
-
-function edtDC_Callback(hObject, eventdata, handles)
-% hObject    handle to edtDC (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of edtDC as text
-%        str2double(get(hObject,'String')) returns contents of edtDC as a double
 
 
 % --- Executes during object creation, after setting all properties.
@@ -156,6 +200,8 @@ acStr = get(handles.edtAC,'string');
 iAC = str2num(cell2mat(acStr));
 dcStr = get(handles.edtDC,'string');
 iDC = str2num(cell2mat(dcStr));
+runTitle = getappdata(0,'runTitle');
+
 
 
 function edtTemp_Callback(hObject, eventdata, handles)
@@ -190,9 +236,16 @@ if isempty(pcell)
     warndlg('Canceled operation');
     return;
 end
-Freq = str2num(pcell{1});
-iAC = str2num(pcell{2});
-iDC = str2num(pcell{3});
+Freq = str2double(pcell{1});
+iAC = str2double(pcell{2});
+iDC = str2double(pcell{3});
+
+% N4TH = getappdata(0,'N4TH');
+% fg = getappdata(0,'fg');
+% pwr_obj = getappdata(0,'pwr_obj');
+% setDC(iDC,pwr_obj,N4TH);
+% setAC(iAC,f,fg,N4TH);
+data = GUI_N4TH_1P(Freq,iAC,10,1,handles)
 
 
 % --- Executes on button press in btnProp.
@@ -200,10 +253,12 @@ function btnProp_Callback(hObject, eventdata, handles)
 % hObject    handle to btnProp (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-question={'Wire type:','Wire shape:','Wire dimensions:','Vtap distance',...
-	'Version','Averaging (lower is faster)', 'Amplification','Sample Volume'};
+question={'Wire type','Wire shape','Wire dimensions','Vtap distance',...
+	'Version','Averaging (lower is faster)', 'Amplification',...
+    'Thermometer current (\muA)','Heater resistance (\Omega)','Volume of sample'};
 defaultanswer = getappdata(0,'defAns'); % get default answers
-run = inputdlg(question,'Input',1,defaultanswer);
+options.Interpreter = 'tex';
+run = inputdlg(question,'Input',1,defaultanswer,options);
 if isempty(run)
     warndlg('No parameters were changed, the script will use the previus ones','Window Closed');
     return;
@@ -216,71 +271,201 @@ runTitle = strjoin(run(1:6)');
 setappdata(0,'runTitle',runTitle);
 setappdata(0,'run',run);
 
+Isrc = num2str(defaultanswer{8});
+setappdata(0,'Isrc',Isrc);
+yoko_obj = getappdata(0,'yoko_obj');
+setYokoCurrent(Isrc,yoko);
 
-function [waves] = GUI_N4TH_1P(f,av,averaging,N4TH,fg)
+
+function [waves] = GUI_N4TH_1P(f,iAC,av,averaging,handles)
 % N4TH_1P(current,f,av,averaging,N4th,fg) measures one-point from N4TH device
 %   f       - frequency
 %   av      - voltage amplification
-%   N4th    - N4TH object
+%   N4TH    - N4TH object
 %   fg      - function generator object
 
+% N4TH = getappdata(0,'N4TH');
+% fg = getappdata(0,'fg');
+
 freq = ['F',num2str(f),'Hz'];
-amplitude = ['amp',num2str(100*(round(10*I))),'mA'];
+amplitude = ['amp',num2str(100*(round(10*iAC))),'mA'];
 
-for ind = 1:averaging
-    % do avaraging over multiple measurements
-    reading = [];
-    fprintf(N4TH,'FAST,ON');
-    pause(1.5);
-    while isempty(reading)
-        pause(.5);
-        reading=query(N4TH,  'LCR?');
-    end
-    LCR = textscan(reading, '%s', 'Delimiter', ',', 'CommentStyle', '\','headerlines',0);
-    LCR = LCR{:}; LCR = str2double(LCR);
-    
-    reading=[];
-    while isempty(reading)
-        pause(.5);
-        reading = query(N4TH,  'POWER?');    
-    end
-    fprintf(N4TH,  'FAST,OFF');
-    data = textscan(reading, '%s', 'Delimiter', ',', 'CommentStyle', '\','headerlines',0);
-    data = data{:}; data = str2double(data);
-    
-    Freq(ind)=data(1); VA(ind)=data(4); VAR(ind)=data(6);
-    ASR(ind)=LCR(6); RSR(ind)=LCR(11); IMP(ind)=LCR(4);
-    Irms(ind)=data(21); Iac(ind)=data(22); Idc(ind)=data(23);
-    P(ind)=data(2); PHI(ind)=data(15);
-    Vrms(ind)=data(12); Vac(ind)=data(13); Vdc(ind)=data(14); Vcf(ind)=data(17);
-    P_f(ind)=data(3);	% power at fundamental f
-    VA_f(ind)=data(5);	% power at fundamental f
-    P_dc(ind)=data(10); % DC power
-    P_h(ind)=data(11);  % power at specific harmonic (default 3)
-end
+% for ind = 1:averaging
+%     % do avaraging over multiple measurements
+%     reading = [];
+%     fprintf(N4TH,'FAST,ON');
+%     pause(1.5);
+%     while isempty(reading)
+%         pause(.5);
+%         reading=query(N4TH,  'LCR?');
+%     end
+%     LCR = textscan(reading, '%s', 'Delimiter', ',', 'CommentStyle', '\','headerlines',0);
+%     LCR = LCR{:}; LCR = str2double(LCR);
+%     
+%     reading=[];
+%     while isempty(reading)
+%         pause(.5);
+%         reading = query(N4TH,  'POWER?');    
+%     end
+%     fprintf(N4TH,  'FAST,OFF');
+%     data = textscan(reading, '%s', 'Delimiter', ',', 'CommentStyle', '\','headerlines',0);
+%     data = data{:}; data = str2double(data);
+%     
+%     Freq(ind)=data(1); VA(ind)=data(4); VAR(ind)=data(6);
+%     ASR(ind)=LCR(6); RSR(ind)=LCR(11); IMP(ind)=LCR(4);
+%     Irms(ind)=data(21); Iac(ind)=data(22); Idc(ind)=data(23);
+%     P(ind)=data(2); PHI(ind)=data(15);
+%     Vrms(ind)=data(12); Vac(ind)=data(13); Vdc(ind)=data(14); Vcf(ind)=data(17);
+%     P_f(ind)=data(3);	% power at fundamental f
+%     VA_f(ind)=data(5);	% power at fundamental f
+%     P_dc(ind)=data(10); % DC power
+%     P_h(ind)=data(11);  % power at specific harmonic (default 3)
+% end
+% 
+% waves.(amplitude).(freq).average(1,1)= mean(Irms);	% 1 TRMS Current
+% waves.(amplitude).(freq).average(1,2)= mean(Freq);	% 2 Frequency
+% waves.(amplitude).(freq).average(1,3)= abs(mean(P)/av); % 3 Active power P [W]
+% waves.(amplitude).(freq).average(1,4)= mean(VA)/av;	% 4 Apparent power S [VA]
+% waves.(amplitude).(freq).average(1,5)= mean(PHI);	% 5 Angle PHI
+% waves.(amplitude).(freq).average(1,6)= mean(VAR);	% 6 Reactive Q [var]
+% waves.(amplitude).(freq).average(1,7)= mean(ASR)/av; % 7 Active serial resistance
+% waves.(amplitude).(freq).average(1,8)= mean(RSR)/av; % 8 Reactive serial resistance (reactance)
+% waves.(amplitude).(freq).average(1,9)= mean(IMP)/av; % 9 Impedance
+% waves.(amplitude).(freq).average(1,10)= mean(Vac)/av;	% 10 AC Voltage
+% waves.(amplitude).(freq).average(1,11)= mean(Vdc)/av;	% 11 DC Voltage
+% waves.(amplitude).(freq).average(1,12)= mean(Vrms)/av;	% 12 TRMS Voltage
+% waves.(amplitude).(freq).average(1,13)= mean(Vcf);	% Voltage Crest Factor
+% waves.(amplitude).(freq).average(1,14)= mean(Iac);	% AC current component fundamental
+% waves.(amplitude).(freq).average(1,15)= mean(Idc);	% DC current component
+% waves.(amplitude).(freq).average(1,16)= mean(P_f);	% Power at fundamental f [W]
+% waves.(amplitude).(freq).average(1,17)= mean(VA_f);	% Apparent power at fundamental f
+% waves.(amplitude).(freq).average(1,18)= mean(P_dc);  % DC power
+% waves.(amplitude).(freq).average(1,19)= mean(P_h);   % power at specific harmonic (default 3)
 
-waves.(amplitude).(freq).average(1,1)= mean(Irms);	% 1 TRMS Current
-waves.(amplitude).(freq).average(1,2)= mean(Freq);	% 2 Frequency
-waves.(amplitude).(freq).average(1,3)= abs(mean(P)/av); % 3 Active power P [W]
-waves.(amplitude).(freq).average(1,4)= mean(VA)/av;	% 4 Apparent power S [VA]
-waves.(amplitude).(freq).average(1,5)= mean(PHI);	% 5 Angle PHI
-waves.(amplitude).(freq).average(1,6)= mean(VAR);	% 6 Reactive Q [var]
-waves.(amplitude).(freq).average(1,7)= mean(ASR)/av; % 7 Active serial resistance
-waves.(amplitude).(freq).average(1,8)= mean(RSR)/av; % 8 Reactive serial resistance (reactance)
-waves.(amplitude).(freq).average(1,9)= mean(IMP)/av; % 9 Impedance
-waves.(amplitude).(freq).average(1,10)= mean(Vac)/av;	% 10 AC Voltage
-waves.(amplitude).(freq).average(1,11)= mean(Vdc)/av;	% 11 DC Voltage
-waves.(amplitude).(freq).average(1,12)= mean(Vrms)/av;	% 12 TRMS Voltage
-waves.(amplitude).(freq).average(1,13)= mean(Vcf);	% Voltage Crest Factor
-waves.(amplitude).(freq).average(1,14)= mean(Iac);	% AC current component fundamental
-waves.(amplitude).(freq).average(1,15)= mean(Idc);	% DC current component
-waves.(amplitude).(freq).average(1,16)= mean(P_f);	% Power at fundamental f [W]
-waves.(amplitude).(freq).average(1,17)= mean(VA_f);	% Apparent power at fundamental f
-waves.(amplitude).(freq).average(1,18)= mean(P_dc);  % DC power
-waves.(amplitude).(freq).average(1,19)= mean(P_h);   % power at specific harmonic (default 3)
+% HP8904A( fg, 0, 440, 'sine', 2, 'on', 'B');	% Zero HP
 
-HP8904A( fg, 0, 440, 'sine', 2, 'on', 'B');	% Zero HP
+waves.(amplitude).(freq).average = 1:19;
+statusStr = {['TRMS Current:  ' num2str(waves.(amplitude).(freq).average(1,1))];...
+             ['Frequency:  ' num2str(waves.(amplitude).(freq).average(1,2))];...
+             ['Active Power P [W]:  ' num2str(waves.(amplitude).(freq).average(1,3))];...
+             ['Apparent Power S [VA]:  ' num2str(waves.(amplitude).(freq).average(1,4))];...
+             ['Angle PHI:  ' num2str(waves.(amplitude).(freq).average(1,5))];...
+             ['Reactive Q [var]:  ' num2str(waves.(amplitude).(freq).average(1,6))];...
+             ['Active Serial Resistance:  ' num2str(waves.(amplitude).(freq).average(1,7))];...
+             ['Reactive serial resistance (reactance):  ' num2str(waves.(amplitude).(freq).average(1,8))];...
+             ['Impedance:  ' num2str(waves.(amplitude).(freq).average(1,9))];...
+             ['AC Voltage:  ' num2str(waves.(amplitude).(freq).average(1,10))];...
+             ['DC Voltage:  ' num2str(waves.(amplitude).(freq).average(1,11))];...
+             ['TRMS Voltage:  ' num2str(waves.(amplitude).(freq).average(1,12))];...
+             ['Voltage Crest Factor:  ' num2str(waves.(amplitude).(freq).average(1,13))];...
+             ['AC Current Component Fundamental:  ' num2str(waves.(amplitude).(freq).average(1,14))];...
+             ['DC Current Component:  ' num2str(waves.(amplitude).(freq).average(1,15))];...
+             ['Power at Fundamental f [W]:  ' num2str(waves.(amplitude).(freq).average(1,16))];...
+             ['Apparent Power at Fundamental f:  ' num2str(waves.(amplitude).(freq).average(1,17))];...
+             ['DC Power:  ' num2str(waves.(amplitude).(freq).average(1,18))];...
+             ['power at specific harmonic (default 3):  ' num2str(waves.(amplitude).(freq).average(1,19))]};
+
+set(handles.txtStatus,'string',statusStr);
 
 function TempControl(handles)
 % TempControl controls on temperature 
+% volt_obj = getappdata(0,'volt_obj');
+% Isrc = getappdata(0,'Isrc');
+% Temp = getTemp(volt_obj,Isrc);
+Temp = num2str(rand(1));
+set(handles.txtNowTemp,'string',Temp);
 
+
+% --- Executes on button press in pushbutton5.
+function pushbutton5_Callback(hObject, eventdata, handles)
+% hObject    handle to pushbutton5 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+waves.iAC = 1:5:100;
+waves.frequency = 100:17:500;
+waves.loss = waves.iAC'*waves.frequency;
+waves.runtitle = 'Try';
+lossplot_GUI(waves,handles)
+
+function h = lossplot_GUI(data,handles)
+[X,Y] = meshgrid(sort(data.iAC),sort(data.frequency));
+axs = handles.axsPlot;
+h = surf(axs,X,Y,1000.*data.loss','FaceColor','interp','FaceLighting','gouraud');
+% X = 1:5:100; Y = 100:17:500;
+% Z = Y'*X;
+% h = surf(handles.axsPlot,X,Y,Z,'FaceColor','interp','FaceLighting','gouraud');
+title(axs,data.runtitle,'Interpreter','none','Fontsize',14); 
+axis(axs,[min(data.iAC) max(data.iAC) 200 max(data.frequency) 1100*min(min(data.loss,[],1)) 1100*max(max(data.loss,[],1))]);
+xlabel(axs,'Current [A]rms','Fontsize',14);ylabel(axs,'frequency [Hz]','Fontsize',14);
+zlabel(axs,'Losses [mW]','Fontsize',14);
+set(axs,'FontSize',13);
+
+
+% --- Executes when user attempts to close N4TH_GUI.
+function N4TH_GUI_CloseRequestFcn(hObject, eventdata, handles)
+% hObject    handle to N4TH_GUI (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+devlist = {'Couldn''t disconnect from the following devices:'}; ind = 2;
+% disconnect from objects
+try     % N4TH
+    N4TH = getappdata(0,'N4TH');
+    fclose(N4TH);
+catch
+%     errordlg('Couldn''t disconnect from the power supplier','Disconnection Error');
+    devlist{ind,1} = '    - N4TH'; ind = ind + 1;
+end
+
+try     % function generator
+    fg = getappdata(0,'fg');
+    fclose(fg);
+catch
+%     errordlg('Couldn''t disconnect from the function generator','Disconnection Error');
+    devlist{ind,1} = '    - Function Generator'; ind = ind + 1;
+end
+
+try     % power supplier
+    pwr_obj = getappdata(0,'pwr_obj');
+    fclose(pwr_obj);
+catch
+%     errordlg('Couldn''t disconnect from the power supplier','Disconnection Error');
+    devlist{ind,1} = '    - Power Supplier'; ind = ind + 1;
+end
+
+try     % voltmeter
+    volt_obj = getappdata(0,'volt_obj');
+    fclose(volt_obj);
+catch
+%     errordlg('Couldn''t disconnect from the voltmeter','Disconnection Error');
+    devlist{ind,1} = '    - Voltmeter'; ind = ind + 1;
+end
+
+try     % YOKOGAWA
+    yoko_obj = getappdata(0,'yoko_obj');
+    fclose(yoko_obj);
+catch
+%     errordlg('Couldn''t connect to the Yokogawa','Connection Error');
+    devlist{ind,1} = '    - YOKOGAWA'; ind = ind + 1;
+end
+
+try     % XFR
+    xfr_obj = getappdata(0,'xfr_obj');
+    fclose(xfr_obj);
+catch
+%     errordlg('Couldn''t connect to the Yokogawa','Connection Error');
+    devlist{ind,1} = '    - XANTREX XFR DC Power supply'; ind = ind + 1;
+end
+
+if ind>2
+    errordlg(devlist,'Disconnection Error');
+end
+
+try     % end timer
+    tempTimer = getappdata(0,'tempTimer');
+    stop(tempTimer);
+catch
+    errordlg('timer didn''t stop');
+end
+
+% Hint: delete(hObject) closes the figure
+delete(hObject);

@@ -4,10 +4,10 @@ function [ outDC ] = setDC( iDC , pwr_obj , N4TH )
 %   pwr_obj  - power supplier object
 %   N4TH- N4TH object
 
-output(0,pwr_obj);
+outputHP(0,pwr_obj);    % turn off
 supVoltage(5,pwr_obj);  % set voltage to 5 Volts
 supCurrent(iDC,pwr_obj);% set current
-output(1,pwr_obj);
+outputHP(1,pwr_obj);    % turn on
 
 % read DC current
 pause(5);
@@ -16,7 +16,7 @@ outDC = getDC(N4TH);
 ind = 1;    
 % feedback loop
 while abs(outDC/iDC - 1) > 0.002
-    output(0,pwr_obj);
+    outputHP(0,pwr_obj);
     outDC = outDC*(iDC/outDC);  % fixing current
     if outDC >= 75 && ind <= 3
         % if amplitude is too high and its under the 3rd try
@@ -35,7 +35,7 @@ while abs(outDC/iDC - 1) > 0.002
     end
     
     supCurrent(outDC,pwr_obj);	% set current
-    output(1,pwr_obj);          % turn output on
+    outputHP(1,pwr_obj);        % turn output on
     pause(5);                   % wait for power supply
     outDC = getDC(N4TH);        % get DC current
 end
