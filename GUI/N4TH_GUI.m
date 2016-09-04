@@ -22,7 +22,7 @@ function varargout = N4TH_GUI(varargin)
 
 % Edit the above text to modify the response to help N4TH_GUI
 
-% Last Modified by GUIDE v2.5 30-Aug-2016 14:01:38
+% Last Modified by GUIDE v2.5 04-Sep-2016 16:17:31
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -56,10 +56,10 @@ function N4TH_GUI_OpeningFcn(hObject, eventdata, handles, varargin)
 handles.output = hObject;
 
 % default answers
-defaultanswer = {'Ni-MgB2 ','round','1_3mm','Vtap 50mm','v1','1','1','0.1','20','0.05*(0.0013/2)^2*pi'};
+defaultanswer = {'Ni-MgB2 ','round','1_3mm','Vtap 50mm','v1','1','1','100','20','0.05*(0.0013/2)^2*pi'};
 setappdata(0,'defAns',defaultanswer);
 
-Isrc = num2str(defaultanswer{8});
+Isrc = str2num(defaultanswer{8});
 setappdata(0,'Isrc',Isrc);
 
 % connect to objects
@@ -92,7 +92,7 @@ catch
 end
 
 try     % voltmeter
-    volt_obj = GPconnect(9);     % check the address
+    volt_obj = GPconnect(8);     % check the address
     prepVolt(volt_obj);
     setappdata(0,'volt_obj',volt_obj);
 catch
@@ -101,7 +101,7 @@ catch
 end
 
 try     % YOKOGAWA
-    yoko_obj = GPconnect(3);     % check the address
+    yoko_obj = GPconnect(23);     % check the address
     setYokoCurrent(Isrc,yoko_obj);
     setappdata(0,'yoko_obj',yoko_obj);
 catch
@@ -111,7 +111,7 @@ end
 
 try     % XFR
     xfr_obj = GPconnect(14);     % check the address
-    thermoI(xfr_obj);
+%     thermoI(xfr_obj);
     setappdata(0,'xfr_obj',xfr_obj);
 catch
 %     errordlg('Couldn''t connect to the Yokogawa','Connection Error');
@@ -119,7 +119,8 @@ catch
 end
 
 if ind>2
-    errordlg(devlist,'Connection Error');
+    errh = errordlg(devlist,'Connection Error');
+    uiwait(errh);
 end
 
 % set temperature timer
@@ -127,7 +128,7 @@ TempControl_timer = @(~,~) TempControl(handles);
 tempTimer = timer;
 tempTimer.Name = 'Temperatre Control Timer';
 tempTimer.TimerFcn = TempControl_timer;
-tempTimer.Period = 0.02;
+tempTimer.Period = 0.05;
 tempTimer.ExecutionMode = 'fixedRate';
 start(tempTimer);
 setappdata(0,'tempTimer',tempTimer);
@@ -369,16 +370,16 @@ set(handles.txtStatus,'string',statusStr);
 
 function TempControl(handles)
 % TempControl controls on temperature 
-% volt_obj = getappdata(0,'volt_obj');
-% Isrc = getappdata(0,'Isrc');
-% Temp = getTemp(volt_obj,Isrc);
-Temp = num2str(rand(1));
+volt_obj = getappdata(0,'volt_obj');
+Isrc = getappdata(0,'Isrc');
+Temp = sprintf('%0.2f',getTemp(volt_obj,Isrc*1e-6));
+% Temp = num2str(rand(1));
 set(handles.txtNowTemp,'string',Temp);
 
 
-% --- Executes on button press in pushbutton5.
-function pushbutton5_Callback(hObject, eventdata, handles)
-% hObject    handle to pushbutton5 (see GCBO)
+% --- Executes on button press in btnSetTemp.
+function btnSetTemp_Callback(hObject, eventdata, handles)
+% hObject    handle to btnSetTemp (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 waves.iAC = 1:5:100;
@@ -394,11 +395,11 @@ h = surf(axs,X,Y,1000.*data.loss','FaceColor','interp','FaceLighting','gouraud')
 % X = 1:5:100; Y = 100:17:500;
 % Z = Y'*X;
 % h = surf(handles.axsPlot,X,Y,Z,'FaceColor','interp','FaceLighting','gouraud');
-title(axs,data.runtitle,'Interpreter','none','Fontsize',14); 
+title(axs,data.runtitle,'Interpreter','none','Fontsize',12); 
 axis(axs,[min(data.iAC) max(data.iAC) 200 max(data.frequency) 1100*min(min(data.loss,[],1)) 1100*max(max(data.loss,[],1))]);
-xlabel(axs,'Current [A]rms','Fontsize',14);ylabel(axs,'frequency [Hz]','Fontsize',14);
-zlabel(axs,'Losses [mW]','Fontsize',14);
-set(axs,'FontSize',13);
+xlabel(axs,'Current [A]rms','Fontsize',12);ylabel(axs,'frequency [Hz]','Fontsize',12);
+zlabel(axs,'Losses [mW]','Fontsize',12);
+set(axs,'FontSize',12);
 
 
 % --- Executes when user attempts to close N4TH_GUI.
