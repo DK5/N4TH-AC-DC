@@ -233,7 +233,7 @@ function btn1Point_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 pcell = inputdlg({'Frequncy (Hz):','AC current (Amps):','DC current (Amps):'});
-if isempty(pcell)
+if isempty(pcell) || sum(cellfun(@isempty,pcell))
     warndlg('Canceled operation');
     return;
 end
@@ -275,7 +275,7 @@ setappdata(0,'run',run);
 Isrc = num2str(defaultanswer{8});
 setappdata(0,'Isrc',Isrc);
 yoko_obj = getappdata(0,'yoko_obj');
-setYokoCurrent(Isrc,yoko);
+setYokoCurrent(Isrc,yoko_obj);
 
 
 function [waves] = GUI_N4TH_1P(f,iAC,av,averaging,handles)
@@ -387,6 +387,7 @@ waves.frequency = 100:17:500;
 waves.loss = waves.iAC'*waves.frequency;
 waves.runtitle = 'Try';
 lossplot_GUI(waves,handles)
+
 
 function h = lossplot_GUI(data,handles)
 [X,Y] = meshgrid(sort(data.iAC),sort(data.frequency));
