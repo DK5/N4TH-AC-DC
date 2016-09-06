@@ -1,14 +1,13 @@
-obj1 = instrfind('Type', 'serial', 'Port', 'COM1', 'Tag', '');
+Hornet = instrfind('Type', 'serial', 'Port', 'COM1', 'Tag', '');
 
 % Create the serial port object if it does not exist
 % otherwise use the object that was found.
-if isempty(obj1)
-    obj1 = serial('COM1');
+if isempty(Hornet)
+    Hornet = serial('COM1','BaudRate',19200,'DataBits',8,'StopBits',1,'Terminator','CR');
 else
-    fclose(obj1);
-    obj1 = obj1(1)
+    fclose(Hornet);
+    Hornet = Hornet(1);
 end
-Hornet = serial('COM3');    % specify com #
 fopen(Hornet);
 
 %% Get Pressure
