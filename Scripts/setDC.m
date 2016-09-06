@@ -3,6 +3,8 @@ function [ outDC ] = setDC( iDC , pwr_obj , N4TH )
 %   iDC - desired DC current
 %   pwr_obj  - power supplier object
 %   N4TH- N4TH object
+amp = 1 ; % amplification factor of dI/I
+damp = 0.01;
 
 outputHP(0,pwr_obj);    % turn off
 supVoltage(5,pwr_obj);  % set voltage to 5 Volts
@@ -11,20 +13,31 @@ outputHP(1,pwr_obj);    % turn on
 
 % read DC current
 pause(5);
-outDC = getDC(N4TH);
+out2DC = getDC(N4TH);
 
 ind = 1;    
 % feedback loop
-while abs(outDC/iDC - 1) > 0.002
-    outputHP(0,pwr_obj);
-    outDC = outDC*(iDC/outDC);  % fixing current
+while abs(out2DC/iDC - 1) > 0.002
+%     outputHP(0,pwr_obj);
+    out1DC = out2DC;    % save old current
+    pause(0.1);         % pause before another measure
+    out2DC = getDC(N4TH);   % measure current
+    dI = out2DC-out1DC; % calculate difference between two close measurements
+    if out2DC > 0.6*iDC
+        % low dI, low I (out2DC) --> high outDC
+        outDC = iDC*(1+damp/(dI*out2DC));
+    else
+        % I is close
+        outDC = iDC*(1+amp*dI/out2DC);
+    end
+    
     if outDC >= 75 && ind <= 3
-        % if amplitude is too high and its under the 3rd try
+        % if current is too high and its under the 3rd try
         fprintf ('Try %i\n',ind);
-        fprintf('Current is too high!!! %2.2f volt \n ',outDC);
+        fprintf('Current is too high!!! %2.2f Amps \n ',outDC);
         fprintf('Cannot reach %2.2fA. Actual current is %2.2fA\n',iDC,outDC);
         % turn off power supplier
-        outDC = 0; supCurrent(outDC,pwr_obj);   % set current
+%         outDC = 0; supCurrent(outDC,pwr_obj);   % set current
         ind = ind+1; outDC = 0.01*ind;
         
     elseif outDC >= 75 && ind > 3;
@@ -35,8 +48,8 @@ while abs(outDC/iDC - 1) > 0.002
     end
     
     supCurrent(outDC,pwr_obj);	% set current
-    outputHP(1,pwr_obj);        % turn output on
+%     outputHP(1,pwr_obj);        % turn output on
     pause(5);                   % wait for power supply
-    outDC = getDC(N4TH);        % get DC current
+    out2DC = getDC(N4TH);        % get DC current
 end
 end

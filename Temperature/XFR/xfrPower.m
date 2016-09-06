@@ -12,5 +12,5 @@ I = V/R;
 
 fprintf(XFR,['Iset ' num2str(I)]);
 fprintf(XFR,['Vset ' num2str(V)]);
-
+outputXFR(1,XFR);
 end
