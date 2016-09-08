@@ -379,8 +379,8 @@ function TempControl(handles)
 maxTemp = getappdata(0,'maxTemp');  % get temperature limit
 volt_obj = getappdata(0,'volt_obj');% get voltmeter object
 Isrc = getappdata(0,'Isrc');        % get sourced current in thermometer
-% TempV = getTemp(volt_obj,Isrc*1e-6);% calculate Temperature 
-TempV = 100*rand(1);
+TempV = getTemp(volt_obj,Isrc*1e-6);% calculate Temperature 
+% TempV = 100*rand(1);
 Temp = sprintf('%0.2f',TempV);      % format as text
 if TempV > maxTemp   % check if Temp above allowed
     % Yes - shut down the system
