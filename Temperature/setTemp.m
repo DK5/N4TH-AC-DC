@@ -4,8 +4,8 @@ if exist('err','var') == 0
     % if not exists - first step
     figure('Temperature control');
     err = [];
-    sHandle = plot(1:length(err),spTemp,'--r');
-    pHandle = plot(1:length(err),spTemp - err*spTemp);
+    sHandle = plot([1 length(err)],[spTemp spTemp],'-r');
+    pHandle = plot(1:length(err),spTemp - err*spTemp,'-ob');
     for samp = 1:5
         measTemp = getTemp(volt_obj,Isrc);      % measure 5 temperatures
         err(samp) = (spTemp - measTemp)/spTemp; % calculate 5 initial errors
