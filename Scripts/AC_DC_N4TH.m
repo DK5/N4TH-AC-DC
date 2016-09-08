@@ -3,16 +3,16 @@ outputHP(0,pwr_obj);      % turn off power supply
 supVoltage(5,pwr_obj);  % supply 5V (DC)
 
 for iDC = DClist
-    setDC(iDC,pwr_obj,N4TH);	% set DC current
+    dcI = setDC(iDC,pwr_obj,N4TH);	% set DC current
+    DCstr = ['DC',num2str(dcI),'A'];
     for f = frequency
         HP8904A( fg, 0, 440, 'sine', 2, 'on', 'B') % turn off function generator
-        
+        freq = ['F',num2str(f),'Hz'];   % field title
         for iAC = AClist
             [outAC,amp] = setAC(iAC,f,fg,N4TH);   % set AC current
             tempdata = N4TH_1P(iAC,f,av,round(averaging),N4TH,fg);  % measure 1 point
-            freq = ['F',num2str(f),'Hz'];   % field title
-            amplitude = ['amp',num2str(100*(round(10*outAC))),'mA'];    % field title
-            data.(amplitude).(freq) = tempdata.(amplitude).(freq);
+            amplitude = ['AC',num2str(100*(round(10*outAC))),'mA'];    % field title
+            data.(DCstr).(amplitude).(freq) = tempdata.(amplitude).(freq);
             fprintf ('current %0.1fA | Frequency %iHz | Amplitude %0.0fmV | Power %0.3fuW\n',iAC,f,1000*amp,1E6*data.(amplitude).(freq).average(1,3))
             if abs(outAC-iAC)>0.1;
                 fprintf ('Warning! current is %i instead of %i\n',outAC,iAC); 

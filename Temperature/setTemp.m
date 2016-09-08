@@ -1,25 +1,25 @@
-function setTemp(spTemp,errorInt,Isrc,Rth,volt_obj,XFR,err,const)
+function setTemp(spTemp,errorInt,Isrc,Rth,volt_obj,XFR,err)
 dt = 0.05;
-if exist('const','var'); end
 if exist('err','var') == 0
     % if not exists - first step
-    err = []; const = 0;
+    err = [];
     for samp = 1:5
         measTemp = getTemp(volt_obj,Isrc);
         err(samp) = (spTemp - measTemp)/spTemp; 
         pause(dt);
     end
     setTemp(spTemp,errorInt,Isrc,Rth,volt_obj,XFR,err);
-elseif err(end)*spTemp < errorInt
-    const = const+1;
-    if const > 50
+elseif abs(err(end)*spTemp) < errorInt
+    % if temperature is in the interval
+    if numel(err) > 50 && sum(err(end-50)> errorInt/spTemp)
+        % if last 50 temperatures were in the interval - stop
         return;
     end
 end
 
 % PID constants
 % u(t) = Kp*e(t) + Ki*integral({0,t},e(\tau),d\tau) + Kd*(de/dt)
-Kp = 1; Ki = 1; Kd = 1;
+Kp = 5; Ki = 3; Kd = 3;
 Power = 5;
 
 % measure Temperature
