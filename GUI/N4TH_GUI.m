@@ -22,7 +22,7 @@ function varargout = N4TH_GUI(varargin)
 
 % Edit the above text to modify the response to help N4TH_GUI
 
-% Last Modified by GUIDE v2.5 05-Sep-2016 14:48:49
+% Last Modified by GUIDE v2.5 08-Sep-2016 09:53:02
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -59,8 +59,15 @@ handles.output = hObject;
 defaultanswer = {'Ni-MgB2 ','round','1_3mm','Vtap 50mm','v1','1','1','100','20','0.05*(0.0013/2)^2*pi'};
 setappdata(0,'defAns',defaultanswer);
 
+tempStr = '15K'; run = defaultanswer;
+run{end} = eval(run{end}); % calculate volume
+run = [run(1:4)';{tempStr};run(5:end)'];
+runTitle = strjoin(run(1:6)');
+setappdata(0,'runTitle',runTitle);
+
 Isrc = str2num(defaultanswer{8});
 setappdata(0,'Isrc',Isrc);
+setappdata(0,'maxTemp',50);
 
 % connect to objects
 devlist = {'Couldn''t connect to the following devices:'}; ind = 2;
@@ -128,7 +135,7 @@ TempControl_timer = @(~,~) TempControl(handles);
 tempTimer = timer;
 tempTimer.Name = 'Temperatre Control Timer';
 tempTimer.TimerFcn = TempControl_timer;
-tempTimer.Period = 0.05;
+tempTimer.Period = 1;
 tempTimer.ExecutionMode = 'fixedRate';
 start(tempTimer);
 setappdata(0,'tempTimer',tempTimer);
@@ -202,8 +209,6 @@ iAC = str2num(cell2mat(strsplit(acStr)));
 dcStr = get(handles.edtDC,'string');
 iDC = str2num(cell2mat(strsplit(dcStr)));
 runTitle = getappdata(0,'runTitle');
-
-
 
 
 function edtTemp_Callback(hObject, eventdata, handles)
@@ -370,12 +375,25 @@ statusStr = {['TRMS Current:  ' num2str(waves.(amplitude).(freq).average(1,1))];
 set(handles.txtStatus,'string',statusStr);
 
 function TempControl(handles)
-% TempControl controls on temperature 
-volt_obj = getappdata(0,'volt_obj');
-Isrc = getappdata(0,'Isrc');
-Temp = sprintf('%0.2f',getTemp(volt_obj,Isrc*1e-6));
-% Temp = num2str(rand(1));
-set(handles.txtNowTemp,'string',Temp);
+% TempControl controls on temperature
+maxTemp = getappdata(0,'maxTemp');  % get temperature limit
+volt_obj = getappdata(0,'volt_obj');% get voltmeter object
+Isrc = getappdata(0,'Isrc');        % get sourced current in thermometer
+% TempV = getTemp(volt_obj,Isrc*1e-6);% calculate Temperature 
+TempV = 100*rand(1);
+Temp = sprintf('%0.2f',TempV);      % format as text
+if TempV > maxTemp   % check if Temp above allowed
+    % Yes - shut down the system
+%     pwr_obj = getappdata(0,'pwr_obj');
+%     outputHP(0,pwr_obj);    % shutdown DC supplier
+%     fg = getappdata(0,'fg');
+%     HP8904A(fg,0,0,'sine',2,'off','B'); % shutdown function generator
+%     xfr_obj = getappdata(0,'xfr_obj');
+%     outputXFR(0,xfr_obj);   % sutdown power supply to heater resistor
+    set(handles.txtNowTemp,'string',[Temp,'K - Shutdown']);
+else
+    set(handles.txtNowTemp,'string',[Temp,'K']);
+end
 
 
 % --- Executes on button press in btnSetTemp.
@@ -386,7 +404,7 @@ function btnSetTemp_Callback(hObject, eventdata, handles)
 waves.iAC = 1:5:100;
 waves.frequency = 100:17:500;
 waves.loss = waves.iAC'*waves.frequency;
-waves.runtitle = 'Try';
+waves.runTitle = getappdata(0,'runTitle');
 lossplot_GUI(waves,handles)
 
 
@@ -397,11 +415,46 @@ h = surf(axs,X,Y,1000.*data.loss','FaceColor','interp','FaceLighting','gouraud')
 % X = 1:5:100; Y = 100:17:500;
 % Z = Y'*X;
 % h = surf(handles.axsPlot,X,Y,Z,'FaceColor','interp','FaceLighting','gouraud');
-title(axs,data.runtitle,'Interpreter','none','Fontsize',12); 
+title(axs,data.runTitle,'Interpreter','none','Fontsize',12); 
 axis(axs,[min(data.iAC) max(data.iAC) 200 max(data.frequency) 1100*min(min(data.loss,[],1)) 1100*max(max(data.loss,[],1))]);
 xlabel(axs,'Current [A]rms','Fontsize',12);ylabel(axs,'frequency [Hz]','Fontsize',12);
 zlabel(axs,'Losses [mW]','Fontsize',12);
 set(axs,'FontSize',12);
+
+
+function edtMaxTemp_Callback(hObject, eventdata, handles)
+% hObject    handle to edtMaxTemp (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+currChar = get(handles.N4TH_GUI,'CurrentCharacter');
+if isequal(currChar,char(13)) %char(13) == enter key
+   % call the pushbutton callback
+   btnMaxTemp_Callback(handles.btnMaxTemp, eventdata, handles);
+end
+% Hints: get(hObject,'String') returns contents of edtMaxTemp as text
+%        str2double(get(hObject,'String')) returns contents of edtMaxTemp as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function edtMaxTemp_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to edtMaxTemp (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on button press in btnMaxTemp.
+function btnMaxTemp_Callback(hObject, eventdata, handles)
+% hObject    handle to btnMaxTemp (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+maxTemp = str2double(get(handles.edtMaxTemp,'string'));
+setappdata(0,'maxTemp',maxTemp);
 
 
 % --- Executes when user attempts to close N4TH_GUI.
@@ -472,33 +525,3 @@ end
 
 % Hint: delete(hObject) closes the figure
 delete(hObject);
-
-
-
-function edit6_Callback(hObject, eventdata, handles)
-% hObject    handle to edit6 (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of edit6 as text
-%        str2double(get(hObject,'String')) returns contents of edit6 as a double
-
-
-% --- Executes during object creation, after setting all properties.
-function edit6_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to edit6 (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-
-% --- Executes on button press in pushbutton6.
-function pushbutton6_Callback(hObject, eventdata, handles)
-% hObject    handle to pushbutton6 (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)

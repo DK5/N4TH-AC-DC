@@ -1,4 +1,4 @@
-function setTemp(spTemp,Rth,volt_obj,XFR,err)
+function setTemp(spTemp,errorInt,Rth,volt_obj,XFR,err)
 dt = 0.05;
 if exists('err','var') == 0
     % if not exists - first step
@@ -9,6 +9,8 @@ if exists('err','var') == 0
         pause(dt);
     end
     setTemp(spTemp,volt_obj,err);
+elseif err(end) < errorInt
+    return;
 end
 
 % PID constants
