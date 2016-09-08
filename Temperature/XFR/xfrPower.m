@@ -4,6 +4,7 @@ function [ I , V ] = xfrPower( Power, R , XFR )
 Plimit = 60;	% Watt
 
 if Power > Plimit
+    fprintf('%dW is above limit of %dW',Power,Plimit);
     return
 end
 
