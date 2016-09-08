@@ -2,13 +2,17 @@ function setTemp(spTemp,errorInt,Isrc,Rth,volt_obj,XFR,err)
 dt = 0.05;
 if exist('err','var') == 0
     % if not exists - first step
+    figure('Temperature control');
     err = [];
+    sHandle = plot(1:length(err),spTemp,'--r');
+    pHandle = plot(1:length(err),spTemp - err*spTemp);
     for samp = 1:5
-        measTemp = getTemp(volt_obj,Isrc);
-        err(samp) = (spTemp - measTemp)/spTemp; 
-        pause(dt);
+        measTemp = getTemp(volt_obj,Isrc);      % measure 5 temperatures
+        err(samp) = (spTemp - measTemp)/spTemp; % calculate 5 initial errors
+        refreshdata(pHandle,'base');refreshdata(sHandle,'base'); drawnow;   % refresh plot
+        pause(dt);  % pause for a while
     end
-    setTemp(spTemp,errorInt,Isrc,Rth,volt_obj,XFR,err);
+    setTemp(spTemp,errorInt,Isrc,Rth,volt_obj,XFR,err);	% start recursion
 elseif abs(err(end)*spTemp) < errorInt
     % if temperature is in the interval
     if numel(err) > 50 && sum(err(end-50)> errorInt/spTemp)
@@ -25,6 +29,8 @@ Power = 5;
 % measure Temperature
 measTemp = getTemp(volt_obj,Isrc);
 err(end+1) = (spTemp - measTemp)/spTemp;
+
+refreshdata(pHandle,'base'); drawnow;
 
 intg = trapz(err)*dt;
 derr = (err(end-1) - err(end))/dt;
