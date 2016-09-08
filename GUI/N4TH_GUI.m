@@ -252,7 +252,7 @@ iDC = str2double(pcell{3});
 % pwr_obj = getappdata(0,'pwr_obj');
 % setDC(iDC,pwr_obj,N4TH);
 % setAC(iAC,f,fg,N4TH);
-data = GUI_N4TH_1P(Freq,iAC,10,1,handles)
+data = GUI_N4TH_1P(Freq,iAC,10,1,handles);
 
 
 % --- Executes on button press in btnProp.
@@ -401,11 +401,17 @@ function btnSetTemp_Callback(hObject, eventdata, handles)
 % hObject    handle to btnSetTemp (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-waves.iAC = 1:5:100;
-waves.frequency = 100:17:500;
-waves.loss = waves.iAC'*waves.frequency;
-waves.runTitle = getappdata(0,'runTitle');
-lossplot_GUI(waves,handles)
+spTemp = str2double(get(handles.edtSetTemp,'string'));
+configs = getappdata(0,'defAns');
+Rth = str2double(configs{9});
+volt_obj = getappdata(0,'volt_obj');
+xfr_obj = getappdata(0,'xfr_obj');
+setTemp(spTemp,interval,Rth,volt_obj,xfr_obj);
+% waves.iAC = 1:5:100;
+% waves.frequency = 100:17:500;
+% waves.loss = waves.iAC'*waves.frequency;
+% waves.runTitle = getappdata(0,'runTitle');
+% lossplot_GUI(waves,handles)
 
 
 function h = lossplot_GUI(data,handles)
