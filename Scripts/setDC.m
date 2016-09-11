@@ -1,19 +1,20 @@
-function [ outDC ] = setDC( iDC , pwr_obj , N4TH )
+function [ outDC ] = setDC( iDC , limitDC , pwr_obj , N4TH )
 %setAC(iDC,pwr_obj,N4TH) executes feedback loop on AC current
 %   iDC - desired DC current
 %   pwr_obj  - power supplier object
 %   N4TH- N4TH object
 amp = 1.5 ; % amplification factor of dI/I
-damp = 0.005;
+damp = 0.002;
+Vcomp = 5; Res = 1;
 
 outputHP(0,pwr_obj);    % turn off
-supVoltage(5,pwr_obj);  % set voltage to 5 Volts
+supVoltage(Vcomp,pwr_obj);  % set voltage to 5 Volts
 supCurrent(iDC,pwr_obj);% set current
 outputHP(1,pwr_obj);    % turn on
 
 % read DC current
 pause(5); dt = 1;
-out2DC = getDC(N4TH);
+out2DC = getDC(N4TH,1);
 
 ind = 1;    
 % feedback loop
@@ -28,10 +29,10 @@ while abs(out2DC/iDC - 1) > 0.002
         outDC = iDC*(1+damp/(dI*out2DC))
     else
         % I is close
-        outDC = iDC*(1+amp*dI/out2DC)
+        outDC = iDC*(1+amp*(iDC-out2DC))
     end
     
-    if outDC >= 15 && ind <= 3
+    if outDC >= limitDC && ind <= 3
         % if current is too high and its under the 3rd try
         fprintf ('Try %i\n',ind);
         fprintf('Current is too high!!! %2.2f Amps \n ',outDC);
@@ -40,7 +41,7 @@ while abs(out2DC/iDC - 1) > 0.002
 %         outDC = 0; supCurrent(outDC,pwr_obj);   % set current
         ind = ind+1; outDC = 0.01*ind;
         
-    elseif outDC >= 15 && ind > 3;
+    elseif outDC >= limitDC && ind > 3;
         % if amplitude is too high and its over the 3rd try
         fprintf ('Couldn''t make it :( \n');
         % turn off power supplier and break

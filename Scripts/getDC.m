@@ -1,6 +1,9 @@
-function outDC = getDC(N4TH)
+function outDC = getDC(N4TH,prep)
     % read DC current
-    fprintf(N4TH,'COUPLI,PHASE1,DCONLY'); % set DC coupling
+if exist('prep','var') && prep
+        fprintf(N4TH,'COUPLI,PHASE1,DCONLY'); % set DC coupling
+end
+%     fprintf(N4TH,'COUPLI,PHASE1,DCONLY'); % set DC coupling
 %     fprintf(N4TH,'FAST,ON');	% fast communication mode - on
     reading = [];   % prepare empty readings
     while isempty(reading)
