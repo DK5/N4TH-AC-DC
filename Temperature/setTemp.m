@@ -8,40 +8,36 @@ for samp = 1:3
     err(samp) = (spTemp - measTemp)/spTemp; % calculate 5 initial errors
 end
 
-pHandle = plot(1:length(err),spTemp - err*spTemp,'-ob',[1 length(err)],[spTemp spTemp],'-r');
-% linkdata on;
+plot(1:length(err),spTemp - err*spTemp,'-ob',[1 length(err)],[spTemp spTemp],'-r');
 hold off;
 
 % PID constants
 % u(t) = Kp*e(t) + Ki*integral({0,t},e(\tau),d\tau) + Kd*(de/dt)
 dt = 0.2; cor = 30;
-Kp = 10; Ki = 10; Kd = 10;
-Power = 20;
+Kp = 5; Ki = 3; Kd = 3; Kt = 0.01;
+Power = 20; Plimit = 60;
 
-stable = 0; j = 3;
+stable = 0;
 while ~stable
-    j=j+1
     pause(dt)
     % measure Temperature
     measTemp = getTemp(volt_obj,Isrc);
     err(end+1) = (spTemp - measTemp)/spTemp;
     plot(1:length(err),spTemp - err*spTemp,'-ob',[1 length(err)],[spTemp spTemp],'-r');
     % refresh plot
-%     refreshdata(pHandle,'caller'); drawnow;
     
     intg = trapz(err)*dt;
     derr = (err(end) - err(end-1))/dt;
 
-    u = Kp*err(end)+Ki*intg+Kd*derr
-    outP;
-    if outDC >= limitDC
-    % if current is too high and its under the 3rd try
-    fprintf('Cannot reach %2.2fA. Supplying %2.2fA\n',outDC,0.9*limitDC);
-    % turn off power supplier
-    outDC = 0.95*limitDC;
+    u = Kt*(Kp*err(end)+Ki*intg+Kd*derr);
+    outP = (1+u)*Power;
+    if outP >= Plimit
+        fprintf('Cannot reach %2.2fW. Supplying %2.2fW\n',outP,0.95*limitDC);
+        % turn off power supplier
+        outP = 0.95*Plimit;
     end
-
-    xfrPower((1+u)*Power, Rth , XFR );
+    outP = outP*(outP>0);
+    xfrPower(outP, Rth , XFR );
 
     if numel(err) > cor && ~sum(abs(err((end-cor):end)) > errorInt/spTemp)
         % if last 10 temperatures were in the interval - stop

@@ -64,8 +64,10 @@ run{end} = eval(run{end}); % calculate volume
 run = [run(1:4)';{tempStr};run(5:end)'];
 runTitle = strjoin(run(1:6)');
 setappdata(0,'runTitle',runTitle);
+runStr = {runTitle;'DC = 0A  |  AC = 0A  | f = 0Hz'};
+set(handles.txtRunTitle,'string',runStr);
 
-Isrc = str2num(defaultanswer{8});
+Isrc = str2double(defaultanswer{8});
 setappdata(0,'Isrc',Isrc);
 setappdata(0,'maxTemp',50);
 
@@ -214,12 +216,78 @@ function btnStart_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 fStr = get(handles.edtFreq,'string');
 frequency = str2num(cell2mat(strsplit(fStr)));
-acStr = get(handles.edtAC,'string');
-iAC = str2num(cell2mat(strsplit(acStr)));
-dcStr = get(handles.edtDC,'string');
-iDC = str2num(cell2mat(strsplit(dcStr)));
-runTitle = getappdata(0,'runTitle');
 
+acStr = get(handles.edtAC,'string');
+AClist = str2num(cell2mat(strsplit(acStr)));
+
+dcStr = get(handles.edtDC,'string');
+DClist = str2num(cell2mat(strsplit(dcStr)));
+
+runStr = get(handles.txtRunTitle,'string');
+runTitle = getappdata(0,'runTitle');
+config = getappdata(0,'defAns');
+av = str2double(config{7}); averaging = str2double(config{6});
+eval(['volume = ' config{10}]);
+
+outputHP(0,pwr_obj);      % turn off power supply
+supVoltage(5,pwr_obj);  % supply 5V (DC)
+Ilimit = 15;
+
+for iDC = DClist
+    HP8904A( fg, 0, 440, 'sine', 2, 'on', 'B') % turn off function generator
+    dcI = setDC(iDC,Ilimit,pwr_obj,N4TH);	% set DC current
+    DCstr = ['DC',num2str(round(dcI)),'A'];
+    for f = frequency
+        HP8904A( fg, 0, 440, 'sine', 2, 'on', 'B') % turn off function generator
+        freq = ['F',num2str(f),'Hz'];   % field title
+        for iAC = AClist
+            runStr{2} = ['DC = ',num2str(iDC),'A  |  AC = ',num2str(iAC)...
+                ,'A  |  F = ',num2str(f),'Hz'];
+            set(handles.txtRunTitle,'string',runStr);
+            [outAC,amp] = setAC(iAC,f,fg,N4TH);   % set AC current
+            tempdata = N4TH_1P_GUI(outAC,f,av,round(averaging),N4TH);  % measure 1 point
+            amplitude = ['AC',num2str(100*(round(10*outAC))),'mA'];    % field title
+            data.(DCstr).(amplitude).(freq) = tempdata.(amplitude).(freq);
+            fprintf ('current %0.1fA | Frequency %iHz | Amplitude %0.0fmV | Power %0.3fuW\n',iAC,f,1000*amp,1E6*data.(DCstr).(amplitude).(freq).average(1,3))
+            if abs(outAC-iAC)>0.1;
+                fprintf ('Warning! current is %i instead of %i\n',outAC,iAC); 
+            end
+            HP8904A( fg, 0, 440, 'sine', 2, 'on', 'B') % turn off function generator
+            pause (1+iAC*f/10000);
+            shutdownFlag = getappdata(0,'shutdownFlag');
+            while shutdownFlag
+                pause(2);
+                shutdownFlag = getappdata(0,'shutdownFlag');
+            end
+        end
+        
+        outDC = getDC(N4TH);    % check DC current again
+        if (outDC/iDC - 1) < 0.02
+            setDC(iDC,Ilimit,pwr_obj,N4TH);    % set DC current
+        end
+    end
+    
+    data.(DCstr).iAC = sort(AClist);
+    data.(DCstr).frequency = sort(frequency);
+    
+    ttime = toc;
+    clc;
+    
+    fprintf ('Total elapsed time %0.1f minutes \n',ttime/60)
+    
+    data.(DCstr).loss = LossCalculation(data.(DCstr));
+    data.(DCstr).lossH3 = LossCalculationH3(data.(DCstr)); 
+    for i = 1:numel(data.(DCstr).frequency)
+        data.(DCstr).lossPVPC(:,i) = data.(DCstr).loss(:,i)./(data.(DCstr).frequency(i)*volume);
+    end
+    data.(DCstr).runtitle = runTitle;
+    save(runTitle,'data');
+    %Plot and figure save
+    h = lossplot(data.(DCstr));
+    saveas(h,[pwd '\Figures\' runTitle],'fig')
+end
+
+outputHP(0,pwr_obj);    % turn off DC supply
 
 
 
@@ -258,6 +326,9 @@ end
 Freq = str2double(pcell{1});
 iAC = str2double(pcell{2});
 iDC = str2double(pcell{3});
+runStr = get(handles.txtRunTitle,'string');
+runStr{2} = ['DC = ',pcell{3},'A  |  AC = ',pcell{2},'A  |  F = ',pcell{1},'Hz'];
+set(handles.txtRunTitle,'string',runStr);
 
 N4TH = getappdata(0,'N4TH');
 fg = getappdata(0,'fg');
@@ -265,7 +336,12 @@ pwr_obj = getappdata(0,'pwr_obj');
 DClimit = 15;
 setDC(iDC,DClimit,pwr_obj,N4TH);
 setAC(iAC,Freq,fg,N4TH);
-data = GUI_N4TH_1P(Freq,iAC,1,1,N4TH,handles);
+
+config = getappdata(0,'defAns');
+av = str2double(config{7}); averaging = str2double(config{6});
+eval(['volume = ' config{10}]);
+
+data = N4TH_1P_GUI(Freq,iAC,av,averaging,N4TH,handles);
 
 
 % --- Executes on button press in btnProp.
@@ -290,6 +366,9 @@ run = [run(1:4);{tempStr};run(5:end)];
 runTitle = strjoin(run(1:6)');
 setappdata(0,'runTitle',runTitle);
 setappdata(0,'run',run);
+runStr = get(handles.txtRunTitle,'string');
+runStr{1} = runTitle;
+set(handles.txtRunTitle,'string',runStr);
 
 Isrc = num2str(defaultanswer{8});
 setappdata(0,'Isrc',Isrc);
@@ -297,7 +376,7 @@ yoko_obj = getappdata(0,'yoko_obj');
 setYokoCurrent(Isrc,yoko_obj);
 
 
-function [waves] = GUI_N4TH_1P(f,iAC,av,averaging,N4TH,handles)
+function [waves] = N4TH_1P_GUI(f,iAC,av,averaging,N4TH,handles)
 % N4TH_1P(current,f,av,averaging,N4th,fg) measures one-point from N4TH device
 %   f       - frequency
 %   av      - voltage amplification
@@ -310,10 +389,10 @@ function [waves] = GUI_N4TH_1P(f,iAC,av,averaging,N4TH,handles)
 freq = ['F',num2str(f),'Hz'];
 amplitude = ['amp',num2str(100*(round(10*iAC))),'mA'];
 
+fprintf(N4TH,'FAST,ON');
 for ind = 1:averaging
     % do avaraging over multiple measurements
     reading = [];
-    fprintf(N4TH,'FAST,ON');
     pause(1.5);
     while isempty(reading)
         pause(.5);
@@ -327,7 +406,6 @@ for ind = 1:averaging
         pause(.5);
         reading = query(N4TH,  'POWER?');    
     end
-    fprintf(N4TH,  'FAST,OFF');
     data = textscan(reading, '%s', 'Delimiter', ',', 'CommentStyle', '\','headerlines',0);
     data = data{:}; data = str2double(data);
     
@@ -341,7 +419,8 @@ for ind = 1:averaging
     P_dc(ind)=data(10); % DC power
     P_h(ind)=data(11);  % power at specific harmonic (default 3)
 end
-
+s
+fprintf(N4TH,'FAST,OFF');
 waves.(amplitude).(freq).average(1,1)= mean(Irms);	% 1 TRMS Current
 waves.(amplitude).(freq).average(1,2)= mean(Freq);	% 2 Frequency
 waves.(amplitude).(freq).average(1,3)= abs(mean(P)/av); % 3 Active power P [W]
@@ -392,8 +471,10 @@ function TempControl(handles)
 maxTemp = getappdata(0,'maxTemp');  % get temperature limit
 volt_obj = getappdata(0,'volt_obj');% get voltmeter object
 Isrc = getappdata(0,'Isrc');        % get sourced current in thermometer
+shutdownFlag = getappdata(0,'shutdownFlag');
 TempV = getTemp(volt_obj,Isrc*1e-6);% calculate Temperature 
 % TempV = 100*rand(1);
+spTemp = getappdata(0,'TempSet');
 Temp = sprintf('%0.2f',TempV);      % format as text
 if TempV > maxTemp   % check if Temp above allowed
     % Yes - shut down the system
@@ -404,6 +485,9 @@ if TempV > maxTemp   % check if Temp above allowed
     xfr_obj = getappdata(0,'xfr_obj');
     outputXFR(0,xfr_obj);   % sutdown power supply to heater resistor
     set(handles.txtNowTemp,'string',[Temp,'K - Shutdown']);
+    setappdata(0,'shutdownFlag',1);
+elseif shutdownFlag && TempV-spTemp < 0.3
+    setappdata(0,'shutdownFlag',0);
 else
     set(handles.txtNowTemp,'string',[Temp,'K']);
 end
@@ -415,6 +499,7 @@ function btnSetTemp_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 spTemp = str2double(get(handles.edtSetTemp,'string'));
+setappdata(0,'TempSet',spTemp);
 configs = getappdata(0,'defAns');
 Rth = str2double(configs{9});
 volt_obj = getappdata(0,'volt_obj');
@@ -493,6 +578,7 @@ end
 
 try     % function generator
     fg = getappdata(0,'fg');
+    HP8904A( fg, 0, 440, 'sine', 2, 'on', 'B') % turn off function generator
     fclose(fg);
 catch
 %     errordlg('Couldn''t disconnect from the function generator','Disconnection Error');
@@ -501,6 +587,7 @@ end
 
 try     % power supplier
     pwr_obj = getappdata(0,'pwr_obj');
+    outputHP(0,pwr_obj);    % turn off
     fclose(pwr_obj);
 catch
 %     errordlg('Couldn''t disconnect from the power supplier','Disconnection Error');
@@ -525,6 +612,7 @@ end
 
 try     % XFR
     xfr_obj = getappdata(0,'xfr_obj');
+    outputXFR(0,xfr_obj);   % turn off
     fclose(xfr_obj);
 catch
 %     errordlg('Couldn''t connect to the Yokogawa','Connection Error');
