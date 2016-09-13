@@ -1,4 +1,4 @@
-function [ outDC ] = setDC( iDC , limitDC , pwr_obj , N4TH )
+function [ outDC ] = setDCfeedback( iDC , limitDC , pwr_obj , N4TH )
 %setAC(iDC,pwr_obj,N4TH) executes feedback loop on AC current
 %   iDC - desired DC current
 %   pwr_obj  - power supplier object

@@ -1,4 +1,4 @@
-function [waves] = N4TH_1P(f,av,averaging,N4TH,fg)
+function [waves] = N4TH_1P(I,f,av,averaging,N4TH)
 % N4TH_1P(current,f,av,averaging,N4th,fg) measures one-point from N4TH
 % device
 %   f       - frequency
@@ -7,7 +7,7 @@ function [waves] = N4TH_1P(f,av,averaging,N4TH,fg)
 %   fg      - function generator object
 
 freq = ['F' num2str(f) 'Hz'];
-amplitude = ['amp' num2str(100*(round(10*I))) 'mA'];
+amplitude = ['AC',num2str(100*(round(10*I))),'mA'];
 
 for ind = 1:averaging
     % do avaraging over multiple measurements
@@ -70,7 +70,5 @@ waves.(amplitude).(freq).average(1,16)=mean(P_f);	% Power at fundamental f [W]
 waves.(amplitude).(freq).average(1,17)=mean(VA_f);	% Apparent power at fundamental f
 waves.(amplitude).(freq).average(1,18)=mean(P_dc);  % DC power
 waves.(amplitude).(freq).average(1,19)=mean(P_h);   % power at specific harmonic (default 3)
-
-HP8904A( fg, 0, 440, 'sine', 2, 'on', 'B');	% Zero HP
 
 end
