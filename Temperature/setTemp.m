@@ -33,11 +33,18 @@ while ~stable
     derr = (err(end) - err(end-1))/dt;
 
     u = Kp*err(end)+Ki*intg+Kd*derr
+    outP;
+    if outDC >= limitDC
+    % if current is too high and its under the 3rd try
+    fprintf('Cannot reach %2.2fA. Supplying %2.2fA\n',outDC,0.9*limitDC);
+    % turn off power supplier
+    outDC = 0.95*limitDC;
+    end
+
     xfrPower((1+u)*Power, Rth , XFR );
 
-    if numel(err) > cor && ~sum(abs(err(end-cor)) > errorInt/spTemp)
+    if numel(err) > cor && ~sum(abs(err((end-cor):end)) > errorInt/spTemp)
         % if last 10 temperatures were in the interval - stop
-        num2str(spTemp - spTemp*err(end-cor))
         stable = 1;
     end
 end
