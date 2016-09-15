@@ -64,12 +64,13 @@ run{end} = eval(run{end}); % calculate volume
 run = [run(1:4)';{tempStr};run(5:end)'];
 runTitle = strjoin(run(1:6)');
 setappdata(0,'runTitle',runTitle);
-runStr = {runTitle;'DC = 0A  |  AC = 0A  | f = 0Hz'};
+runStr = {runTitle;'DC = 0A'; 'AC = 0A  | f = 0Hz'};
 set(handles.txtRunTitle,'string',runStr);
 
 Isrc = str2double(defaultanswer{8});
 setappdata(0,'Isrc',Isrc);
 setappdata(0,'maxTemp',50);
+setappdata(0,'TempSet',15);
 
 % connect to objects
 devlist = {'Couldn''t connect to the following devices:'}; ind = 2;
@@ -254,8 +255,8 @@ for iDC = DClist
                     dcI = setDC(iDC,Ilimit,pwr_obj,N4TH);	% set DC current
                     DCstr = ['DC',num2str(round(dcI)),'A'];
                 end
-                runStr{2} = ['DC = ',num2str(iDC),'A  |  AC = ',num2str(iAC)...
-                    ,'A  |  F = ',num2str(f),'Hz'];
+                runStr{2} = ['DC = ',num2str(iDC),'A'];
+                runStr{3} = ['AC = ',num2str(iAC),'A  |  F = ',num2str(f),'Hz'];
                 set(handles.txtRunTitle,'string',runStr);
                 [outAC,amp] = setAC(iAC,f,fg,N4TH);   % set AC current
                 tempdata = N4TH_1P_GUI(outAC,f,av,round(averaging),N4TH);  % measure 1 point
@@ -292,6 +293,7 @@ for iDC = DClist
     for i = 1:numel(data.(DCstr).frequency)
         data.(DCstr).lossPVPC(:,i) = data.(DCstr).loss(:,i)./(data.(DCstr).frequency(i)*volume);
     end
+    runTitle = [runTitle DCstr];
     data.(DCstr).runtitle = runTitle;
     save(runTitle,'data');
     %Plot and figure save
@@ -339,7 +341,8 @@ Freq = str2double(pcell{1});
 iAC = str2double(pcell{2});
 iDC = str2double(pcell{3});
 runStr = get(handles.txtRunTitle,'string');
-runStr{2} = ['DC = ',pcell{3},'A  |  AC = ',pcell{2},'A  |  F = ',pcell{1},'Hz'];
+runStr{2} = ['DC = ',pcell{3},'A'];
+runStr{3} = ['AC = ',pcell{2},'A  |  F = ',pcell{1},'Hz'];
 set(handles.txtRunTitle,'string',runStr);
 
 N4TH = getappdata(0,'N4TH');
@@ -431,7 +434,7 @@ for ind = 1:averaging
     P_dc(ind)=data(10); % DC power
     P_h(ind)=data(11);  % power at specific harmonic (default 3)
 end
-s
+
 fprintf(N4TH,'FAST,OFF');
 waves.(amplitude).(freq).average(1,1)= mean(Irms);	% 1 TRMS Current
 waves.(amplitude).(freq).average(1,2)= mean(Freq);	% 2 Frequency
@@ -496,9 +499,9 @@ if TempV > maxTemp   % check if Temp above allowed
     HP8904A(fg,0,0,'sine',2,'off','B'); % shutdown function generator
     xfr_obj = getappdata(0,'xfr_obj');
     outputXFR(0,xfr_obj);   % sutdown power supply to heater resistor
-    set(handles.txtNowTemp,'string',[Temp,'K - Shutdown']);
+    set(handles.txtNowTemp,'string',[Temp,'K !!!']);
     setappdata(0,'shutdownFlag',1);
-elseif shutdownFlag && TempV-spTemp < 0.3
+elseif shutdownFlag && (abs(TempV - spTemp) < 0.3)
     setappdata(0,'shutdownFlag',0);
 else
     set(handles.txtNowTemp,'string',[Temp,'K']);
@@ -510,19 +513,14 @@ function btnSetTemp_Callback(hObject, eventdata, handles)
 % hObject    handle to btnSetTemp (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-spTemp = str2double(get(handles.edtSetTemp,'string'));
+spTemp = str2double(get(handles.edtTemp,'string'));
+interval = 0.02;
 setappdata(0,'TempSet',spTemp);
 configs = getappdata(0,'defAns');
 Rth = str2double(configs{9});
 volt_obj = getappdata(0,'volt_obj');
 xfr_obj = getappdata(0,'xfr_obj');
-setTemp(spTemp,interval,Rth,volt_obj,xfr_obj);
-% waves.iAC = 1:5:100;
-% waves.frequency = 100:17:500;
-% waves.loss = waves.iAC'*waves.frequency;
-% waves.runTitle = getappdata(0,'runTitle');
-% lossplot_GUI(waves,handles)
-
+% setTemp(spTemp,interval,Rth,volt_obj,xfr_obj);
 
 function h = lossplot_GUI(data,handles)
 [X,Y] = meshgrid(sort(data.iAC),sort(data.frequency));
