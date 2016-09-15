@@ -241,23 +241,35 @@ for iDC = DClist
         HP8904A( fg, 0, 440, 'sine', 2, 'on', 'B') % turn off function generator
         freq = ['F',num2str(f),'Hz'];   % field title
         for iAC = AClist
-            runStr{2} = ['DC = ',num2str(iDC),'A  |  AC = ',num2str(iAC)...
-                ,'A  |  F = ',num2str(f),'Hz'];
-            set(handles.txtRunTitle,'string',runStr);
-            [outAC,amp] = setAC(iAC,f,fg,N4TH);   % set AC current
-            tempdata = N4TH_1P_GUI(outAC,f,av,round(averaging),N4TH);  % measure 1 point
-            amplitude = ['AC',num2str(100*(round(10*outAC))),'mA'];    % field title
-            data.(DCstr).(amplitude).(freq) = tempdata.(amplitude).(freq);
-            fprintf ('current %0.1fA | Frequency %iHz | Amplitude %0.0fmV | Power %0.3fuW\n',iAC,f,1000*amp,1E6*data.(DCstr).(amplitude).(freq).average(1,3))
-            if abs(outAC-iAC)>0.1;
-                fprintf ('Warning! current is %i instead of %i\n',outAC,iAC); 
-            end
-            HP8904A( fg, 0, 440, 'sine', 2, 'on', 'B') % turn off function generator
-            pause (1+iAC*f/10000);
-            shutdownFlag = getappdata(0,'shutdownFlag');
+            stopFlag = 0;
+            shutdownFlag = 1;   % enter the while loop; not really off
             while shutdownFlag
-                pause(2);
-                shutdownFlag = getappdata(0,'shutdownFlag');
+                shutdownFlag = getappdata(0,'shutdownFlag');    % get system state
+                if shutdownFlag
+                    % if system is off
+                    pause(20);      % wait for stabilization
+                    stopFlag = 1;   % need initialization
+                    continue;       % check again
+                elseif stopFlag
+                    dcI = setDC(iDC,Ilimit,pwr_obj,N4TH);	% set DC current
+                    DCstr = ['DC',num2str(round(dcI)),'A'];
+                end
+                runStr{2} = ['DC = ',num2str(iDC),'A  |  AC = ',num2str(iAC)...
+                    ,'A  |  F = ',num2str(f),'Hz'];
+                set(handles.txtRunTitle,'string',runStr);
+                [outAC,amp] = setAC(iAC,f,fg,N4TH);   % set AC current
+                tempdata = N4TH_1P_GUI(outAC,f,av,round(averaging),N4TH);  % measure 1 point
+                amplitude = ['AC',num2str(100*(round(10*outAC))),'mA'];    % field title
+                data.(DCstr).(amplitude).(freq) = tempdata.(amplitude).(freq);
+                fprintf ('current %0.1fA | Frequency %iHz | Amplitude %0.0fmV | Power %0.3fuW\n',iAC,f,1000*amp,1E6*data.(DCstr).(amplitude).(freq).average(1,3))
+                if abs(outAC-iAC)>0.1;
+                    fprintf ('Warning! current is %i instead of %i\n',outAC,iAC); 
+                end
+                HP8904A( fg, 0, 440, 'sine', 2, 'on', 'B') % turn off function generator
+                pause (1+iAC*f/10000);
+                shutdownFlag = getappdata(0,'shutdownFlag');    % get system state
+                % if system turned off during measurement - start over the
+                % next loop
             end
         end
         
