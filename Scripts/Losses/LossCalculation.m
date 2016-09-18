@@ -12,5 +12,3 @@ for  current=sort(waves.iAC) % amplitude scan current vs freq ?
     end
     k=k+1;
 end
-
-

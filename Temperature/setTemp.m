@@ -1,4 +1,4 @@
-function setTemp(spTemp,errorInt,Isrc,Rth,volt_obj,XFR)
+function setTemp(spTemp,errorInt,Isrc,Rth,Plimit,volt_obj,XFR)
 
 figure('Name','Temperature control');  % open fig
 err = [];   % declare variable
@@ -15,7 +15,7 @@ hold off;
 % u(t) = Kp*e(t) + Ki*integral({0,t},e(\tau),d\tau) + Kd*(de/dt)
 dt = 0.2; cor = 30;
 Kp = 5; Ki = 3; Kd = 3; Kt = 0.01;
-Power = 20; Plimit = 60;
+Power = 20; % Plimit = 60;
 
 stable = 0;
 while ~stable

@@ -22,7 +22,7 @@ function varargout = N4TH_GUI(varargin)
 
 % Edit the above text to modify the response to help N4TH_GUI
 
-% Last Modified by GUIDE v2.5 08-Sep-2016 09:53:02
+% Last Modified by GUIDE v2.5 18-Sep-2016 10:12:08
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -56,8 +56,10 @@ function N4TH_GUI_OpeningFcn(hObject, eventdata, handles, varargin)
 handles.output = hObject;
 
 % default answers
-defaultanswer = {'Ni-MgB2 ','round','1_3mm','Vtap 50mm','v1','1','1','100','20','0.05*(0.0013/2)^2*pi'};
+defaultanswer = {'Ni-MgB2','round','1_3mm','Vtap 50mm','v1','1','0.05*(0.0013/2)^2*pi'};
 setappdata(0,'defAns',defaultanswer);
+defAnsMeas = {'10','50','1','60','40'};
+setappdata(0,'defAnsMeas',defAnsMeas);
 
 tempStr = '15K'; run = defaultanswer;
 run{end} = eval(run{end}); % calculate volume
@@ -67,7 +69,7 @@ setappdata(0,'runTitle',runTitle);
 runStr = {runTitle;'DC = 0A'; 'AC = 0A  | f = 0Hz'};
 set(handles.txtRunTitle,'string',runStr);
 
-Isrc = str2double(defaultanswer{8});
+Isrc = str2double(defAnsMeas{1});
 setappdata(0,'Isrc',Isrc);
 setappdata(0,'maxTemp',50);
 setappdata(0,'TempSet',15);
@@ -225,14 +227,17 @@ dcStr = get(handles.edtDC,'string');
 DClist = str2num(cell2mat(strsplit(dcStr)));
 
 runStr = get(handles.txtRunTitle,'string');
-runTitle = getappdata(0,'runTitle');
+runTitleOrg = getappdata(0,'runTitle');
 config = getappdata(0,'defAns');
-av = str2double(config{7}); averaging = str2double(config{6});
-eval(['volume = ' config{10}]);
+
+averaging = str2double(config{6});
+eval(['volume = ' config{10} ';']);
+MeasConf = getappdata(0,'defAnsMeas');
+Ilimit = str2double(MeasConf{5});
+av = str2double(MeasConf{6});
 
 outputHP(0,pwr_obj);      % turn off power supply
 supVoltage(5,pwr_obj);  % supply 5V (DC)
-Ilimit = 15;
 
 for iDC = DClist
     HP8904A( fg, 0, 440, 'sine', 2, 'on', 'B') % turn off function generator
@@ -244,7 +249,10 @@ for iDC = DClist
         for iAC = AClist
             stopFlag = 0;
             shutdownFlag = 1;   % enter the while loop; not really off
-            while shutdownFlag
+            while shutdownFlag  
+                % if system is on - measure only once
+                % if system is off - try another measurement, when system
+                % is stable enough to perform measurement
                 shutdownFlag = getappdata(0,'shutdownFlag');    % get system state
                 if shutdownFlag
                     % if system is off
@@ -252,6 +260,8 @@ for iDC = DClist
                     stopFlag = 1;   % need initialization
                     continue;       % check again
                 elseif stopFlag
+                    % system has stopped before, in the middle of
+                    % measurement
                     dcI = setDC(iDC,Ilimit,pwr_obj,N4TH);	% set DC current
                     DCstr = ['DC',num2str(round(dcI)),'A'];
                 end
@@ -275,32 +285,28 @@ for iDC = DClist
         end
         
         outDC = getDC(N4TH);    % check DC current again
-        if (outDC/iDC - 1) < 0.02
+        if (outDC/iDC - 1) < 0.02   
+            % if not in the interval
             setDC(iDC,Ilimit,pwr_obj,N4TH);    % set DC current
         end
     end
     
-    data.(DCstr).iAC = sort(AClist);
-    data.(DCstr).frequency = sort(frequency);
-    
-    ttime = toc;
-    clc;
-    
-    fprintf ('Total elapsed time %0.1f minutes \n',ttime/60)
-    
-    data.(DCstr).loss = LossCalculation(data.(DCstr));
-    data.(DCstr).lossH3 = LossCalculationH3(data.(DCstr)); 
+%     ttime = toc;
+%     clc; fprintf ('Total elapsed time %0.1f minutes \n',ttime/60)
+    data.(DCstr).iAC = sort(AClist);            % sort AC currents
+    data.(DCstr).frequency = sort(frequency);   % sort AC frequencies
+    data.(DCstr).loss = LossCalculation(data.(DCstr));      % calculate loss
+    data.(DCstr).lossH3 = LossCalculationH3(data.(DCstr));  % 
     for i = 1:numel(data.(DCstr).frequency)
         data.(DCstr).lossPVPC(:,i) = data.(DCstr).loss(:,i)./(data.(DCstr).frequency(i)*volume);
     end
-    runTitle = [runTitle DCstr];
-    data.(DCstr).runtitle = runTitle;
+    runTitle = [runTitleOrg DCstr];     % run title - with DC current
+    data.(DCstr).runtitle = runTitle;   
     save(runTitle,'data');
-    %Plot and figure save
-    h = lossplot(data.(DCstr));
+    % Plot and figure save
+    h = lossplot_GUI(data.(DCstr));
     saveas(h,[pwd '\Figures\' runTitle],'fig')
 end
-
 outputHP(0,pwr_obj);    % turn off DC supply
 
 
@@ -332,7 +338,7 @@ function btn1Point_Callback(hObject, eventdata, handles)
 % hObject    handle to btn1Point (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-pcell = inputdlg({'Frequncy (Hz):','AC current (Amps):','DC current (Amps):'});
+pcell = inputdlg({'Frequncy (Hz):','AC current (Amps):','DC current (Amps):','Averaging:'});
 if isempty(pcell) || sum(cellfun(@isempty,pcell))
     warndlg('Canceled operation');
     return;
@@ -340,23 +346,30 @@ end
 Freq = str2double(pcell{1});
 iAC = str2double(pcell{2});
 iDC = str2double(pcell{3});
+averaging = str2double(pcell{4});
+
 runStr = get(handles.txtRunTitle,'string');
 runStr{2} = ['DC = ',pcell{3},'A'];
 runStr{3} = ['AC = ',pcell{2},'A  |  F = ',pcell{1},'Hz'];
 set(handles.txtRunTitle,'string',runStr);
 
+runTitle = getappdata(0,'runTitle');
 N4TH = getappdata(0,'N4TH');
 fg = getappdata(0,'fg');
 pwr_obj = getappdata(0,'pwr_obj');
-DClimit = 15;
-setDC(iDC,DClimit,pwr_obj,N4TH);
+MeasConf = getappdata(0,'defAnsMeas');
+DClimit = str2double(MeasConf{5});
+av = str2double(MeasConf{6});
+dcI = setDC(iDC,DClimit,pwr_obj,N4TH);
 setAC(iAC,Freq,fg,N4TH);
-
 config = getappdata(0,'defAns');
-av = str2double(config{7}); averaging = str2double(config{6});
-eval(['volume = ' config{10}]);
-
-data = N4TH_1P_GUI(Freq,iAC,av,averaging,N4TH,handles);
+eval(['volume = ' config{7}]);
+DCstr = ['DC',num2str(round(dcI)),'A'];
+data.(DCstr) = N4TH_1P_GUI(Freq,iAC,av,averaging,N4TH,handles);
+choice = menu('Save data?','Yes','No');
+if choice == 1
+    save([runTitle,DCstr,'_1Point'],'data') % save data
+end
 
 
 % --- Executes on button press in btnProp.
@@ -365,8 +378,7 @@ function btnProp_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 question={'Wire type','Wire shape','Wire dimensions','Vtap distance',...
-	'Version','Averaging (lower is faster)', 'Amplification',...
-    'Thermometer current (\muA)','Heater resistance (\Omega)','Volume of sample'};
+	'Version','Averaging (lower is faster)','Volume of sample'};
 defaultanswer = getappdata(0,'defAns'); % get default answers
 options.Interpreter = 'tex';
 run = inputdlg(question,'Input',1,defaultanswer,options);
@@ -377,18 +389,13 @@ end
 setappdata(0,'defAns',run);
 tempStr = [get(handles.edtTemp,'string'),'K'];
 run{end} = eval(run{end}); % calculate volume
-run = [run(1:4);{tempStr};run(5:end)];
+run = [run(1:4);{tempStr};run(5)];
 runTitle = strjoin(run(1:6)');
 setappdata(0,'runTitle',runTitle);
 setappdata(0,'run',run);
 runStr = get(handles.txtRunTitle,'string');
 runStr{1} = runTitle;
 set(handles.txtRunTitle,'string',runStr);
-
-Isrc = num2str(defaultanswer{8});
-setappdata(0,'Isrc',Isrc);
-yoko_obj = getappdata(0,'yoko_obj');
-setYokoCurrent(Isrc,yoko_obj);
 
 
 function [waves] = N4TH_1P_GUI(f,iAC,av,averaging,N4TH,handles)
@@ -487,6 +494,7 @@ maxTemp = getappdata(0,'maxTemp');  % get temperature limit
 volt_obj = getappdata(0,'volt_obj');% get voltmeter object
 Isrc = getappdata(0,'Isrc');        % get sourced current in thermometer
 shutdownFlag = getappdata(0,'shutdownFlag');
+intTemp = getappdata(0,'intTemp');
 TempV = getTemp(volt_obj,Isrc*1e-6);% calculate Temperature 
 % TempV = 100*rand(1);
 spTemp = getappdata(0,'TempSet');
@@ -501,7 +509,7 @@ if TempV > maxTemp   % check if Temp above allowed
     outputXFR(0,xfr_obj);   % sutdown power supply to heater resistor
     set(handles.txtNowTemp,'string',[Temp,'K !!!']);
     setappdata(0,'shutdownFlag',1);
-elseif shutdownFlag && (abs(TempV - spTemp) < 0.3)
+elseif shutdownFlag && (abs(TempV - spTemp) < intTemp)
     setappdata(0,'shutdownFlag',0);
 else
     set(handles.txtNowTemp,'string',[Temp,'K']);
@@ -514,13 +522,14 @@ function btnSetTemp_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 spTemp = str2double(get(handles.edtTemp,'string'));
-interval = 0.02;
+MeasConf = getappdata(0,'defAnsMeas');
+Rth = str2double(MeasConf{2});
+Plimit = str2double(MeasConf{3});
+interval = getappdata(0,'intTemp');
 setappdata(0,'TempSet',spTemp);
-configs = getappdata(0,'defAns');
-Rth = str2double(configs{9});
 volt_obj = getappdata(0,'volt_obj');
 xfr_obj = getappdata(0,'xfr_obj');
-% setTemp(spTemp,interval,Rth,volt_obj,xfr_obj);
+% setTemp(spTemp,interval,Rth,Plimit,volt_obj,xfr_obj);
 
 function h = lossplot_GUI(data,handles)
 [X,Y] = meshgrid(sort(data.iAC),sort(data.frequency));
@@ -642,3 +651,26 @@ end
 
 % Hint: delete(hObject) closes the figure
 delete(hObject);
+
+
+% --- Executes on button press in btnMeasConst.
+function btnMeasConst_Callback(hObject, eventdata, handles)
+% hObject    handle to btnMeasConst (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+question={'Thermometer current (\muA)','Heater resistance (\Omega)',...
+          'Heater power limit (W)','Temperature error interval (K)',...
+          'DC current limit (A)','Amplification'};
+defaultanswer = getappdata(0,'defAnsMeas'); % get default answers
+options.Interpreter = 'tex';
+run = inputdlg(question,'Input',1,defaultanswer,options);
+if isempty(run)
+    warndlg('No parameters were changed, the script will use the previus ones','Window Closed');
+    return;
+end
+setappdata(0,'defAnsMeas',run);
+Isrc = num2str(run{1});
+setappdata(0,'Isrc',Isrc);
+yoko_obj = getappdata(0,'yoko_obj');
+setYokoCurrent(Isrc,yoko_obj);
+setappdata(0,'intTemp',str2double(run{4}));
