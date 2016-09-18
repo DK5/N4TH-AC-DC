@@ -7,12 +7,12 @@ for iDC = DClist
     HP8904A( fg, 0, 440, 'sine', 2, 'on', 'B') % turn off function generator
     dcI = setDC(iDC,Ilimit,pwr_obj,N4TH);	% set DC current
     DCstr = ['DC',num2str(round(dcI)),'A'];
-    for f = frequency
-        HP8904A( fg, 0, 440, 'sine', 2, 'on', 'B') % turn off function generator
-        freq = ['F',num2str(f),'Hz'];   % field title
-        for iAC = AClist
-            [outAC,amp] = setAC(iAC,f,fg,N4TH);   % set AC current
-            tempdata = N4TH_1P(outAC,f,av,round(averaging),N4TH);  % measure 1 point
+    for iAC = AClist
+        [outAC,amp] = setAC(iAC,f,fg,N4TH);   % set AC current
+        for f = frequency
+            setFreq(fg,f,'B');
+            freq = ['F',num2str(f),'Hz'];   % field title
+            tempdata = N4TH_1P(av,round(averaging),N4TH);  % measure 1 point
             amplitude = ['AC',num2str(100*(round(10*outAC))),'mA'];    % field title
             data.(DCstr).(amplitude).(freq).average = tempdata;
             fprintf ('current %0.1fA | Frequency %iHz | Amplitude %0.0fmV | Power %0.3fuW\n',iAC,f,1000*amp,1E6*data.(DCstr).(amplitude).(freq).average(1,3))

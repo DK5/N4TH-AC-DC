@@ -229,9 +229,9 @@ DClist = str2num(cell2mat(strsplit(dcStr)));
 runStr = get(handles.txtRunTitle,'string');
 runTitleOrg = getappdata(0,'runTitle');
 config = getappdata(0,'defAns');
-
 averaging = str2double(config{6});
-eval(['volume = ' config{10} ';']);
+eval(['volume = ' config{7} ';']);
+
 MeasConf = getappdata(0,'defAnsMeas');
 Ilimit = str2double(MeasConf{5});
 av = str2double(MeasConf{6});
@@ -243,10 +243,11 @@ for iDC = DClist
     HP8904A( fg, 0, 440, 'sine', 2, 'on', 'B') % turn off function generator
     dcI = setDC(iDC,Ilimit,pwr_obj,N4TH);	% set DC current
     DCstr = ['DC',num2str(round(dcI)),'A'];
-    for f = frequency
-        HP8904A( fg, 0, 440, 'sine', 2, 'on', 'B') % turn off function generator
-        freq = ['F',num2str(f),'Hz'];   % field title
-        for iAC = AClist
+    for iAC = AClist
+        for f = frequency
+            cla(handles.axsPlot);
+            HP8904A( fg, 0, 440, 'sine', 2, 'on', 'B') % turn off function generator
+            freq = ['F',num2str(f),'Hz'];   % field title
             stopFlag = 0;
             shutdownFlag = 1;   % enter the while loop; not really off
             while shutdownFlag  
@@ -269,9 +270,11 @@ for iDC = DClist
                 runStr{3} = ['AC = ',num2str(iAC),'A  |  F = ',num2str(f),'Hz'];
                 set(handles.txtRunTitle,'string',runStr);
                 [outAC,amp] = setAC(iAC,f,fg,N4TH);   % set AC current
-                tempdata = N4TH_1P_GUI(outAC,f,av,round(averaging),N4TH);  % measure 1 point
+                tempdata = N4TH_1P_GUI(av,round(averaging),N4TH);  % measure 1 point
                 amplitude = ['AC',num2str(100*(round(10*outAC))),'mA'];    % field title
-                data.(DCstr).(amplitude).(freq) = tempdata.(amplitude).(freq);
+                data.(DCstr).(amplitude).(freq).average = tempdata;
+                fplot(end+1) = f ; lossPlot(end+1) = tempdata(1,3);
+                plot(handles.axsPlot,fplot,lossPlot,'-o'); hold off;
                 fprintf ('current %0.1fA | Frequency %iHz | Amplitude %0.0fmV | Power %0.3fuW\n',iAC,f,1000*amp,1E6*data.(DCstr).(amplitude).(freq).average(1,3))
                 if abs(outAC-iAC)>0.1;
                     fprintf ('Warning! current is %i instead of %i\n',outAC,iAC); 
@@ -361,11 +364,12 @@ MeasConf = getappdata(0,'defAnsMeas');
 DClimit = str2double(MeasConf{5});
 av = str2double(MeasConf{6});
 dcI = setDC(iDC,DClimit,pwr_obj,N4TH);
-setAC(iAC,Freq,fg,N4TH);
+outAC = setAC(iAC,Freq,fg,N4TH);
+amplitude = ['AC',num2str(100*(round(10*outAC))),'mA'];    % field title
 config = getappdata(0,'defAns');
 eval(['volume = ' config{7}]);
 DCstr = ['DC',num2str(round(dcI)),'A'];
-data.(DCstr) = N4TH_1P_GUI(Freq,iAC,av,averaging,N4TH,handles);
+data.(DCstr).(amplitude).(['F',pcell{1},'Hz']) = N4TH_1P_GUI(av,averaging,N4TH,handles);
 choice = menu('Save data?','Yes','No');
 if choice == 1
     save([runTitle,DCstr,'_1Point'],'data') % save data
@@ -398,23 +402,17 @@ runStr{1} = runTitle;
 set(handles.txtRunTitle,'string',runStr);
 
 
-function [waves] = N4TH_1P_GUI(f,iAC,av,averaging,N4TH,handles)
-% N4TH_1P(current,f,av,averaging,N4th,fg) measures one-point from N4TH device
+function [average] = N4TH_1P_GUI(av,averaging,N4TH,handles)
+% N4TH_1P(av,averaging,N4th) measures one-point from N4TH
+% device
 %   f       - frequency
 %   av      - voltage amplification
-%   N4TH    - N4TH object
+%   N4th    - N4TH object
 %   fg      - function generator object
-
-% N4TH = getappdata(0,'N4TH');
-% fg = getappdata(0,'fg');
-
-freq = ['F',num2str(f),'Hz'];
-amplitude = ['amp',num2str(100*(round(10*iAC))),'mA'];
-
-fprintf(N4TH,'FAST,ON');
 for ind = 1:averaging
     % do avaraging over multiple measurements
     reading = [];
+    fprintf(N4TH,'FAST,ON');
     pause(1.5);
     while isempty(reading)
         pause(.5);
@@ -428,40 +426,50 @@ for ind = 1:averaging
         pause(.5);
         reading = query(N4TH,  'POWER?');    
     end
+    fprintf(N4TH,  'FAST,OFF');
     data = textscan(reading, '%s', 'Delimiter', ',', 'CommentStyle', '\','headerlines',0);
     data = data{:}; data = str2double(data);
     
-    Freq(ind)=data(1); VA(ind)=data(4); VAR(ind)=data(6);
-    ASR(ind)=LCR(6); RSR(ind)=LCR(11); IMP(ind)=LCR(4);
-    Irms(ind)=data(21); Iac(ind)=data(22); Idc(ind)=data(23);
-    P(ind)=data(2); PHI(ind)=data(15);
-    Vrms(ind)=data(12); Vac(ind)=data(13); Vdc(ind)=data(14); Vcf(ind)=data(17);
+    Freq(ind)=data(1);
+    VA(ind)=data(4);
+    VAR(ind)=data(6);
+    ASR(ind)=LCR(6);
+    RSR(ind)=LCR(11);
+    IMP(ind)=LCR(4);
+    Irms(ind)=data(21);
+    Iac(ind)=data(22);
+    Idc(ind)=data(23);
+    P(ind)=data(2);
+    PHI(ind)=data(15);
+    Vrms(ind)=data(12);
+    Vac(ind)=data(13);
+    Vdc(ind)=data(14);
+    Vcf(ind)=data(17);
     P_f(ind)=data(3);	% power at fundamental f
     VA_f(ind)=data(5);	% power at fundamental f
     P_dc(ind)=data(10); % DC power
     P_h(ind)=data(11);  % power at specific harmonic (default 3)
 end
 
-fprintf(N4TH,'FAST,OFF');
-waves.(amplitude).(freq).average(1,1)= mean(Irms);	% 1 TRMS Current
-waves.(amplitude).(freq).average(1,2)= mean(Freq);	% 2 Frequency
-waves.(amplitude).(freq).average(1,3)= abs(mean(P)/av); % 3 Active power P [W]
-waves.(amplitude).(freq).average(1,4)= mean(VA)/av;	% 4 Apparent power S [VA]
-waves.(amplitude).(freq).average(1,5)= mean(PHI);	% 5 Angle PHI
-waves.(amplitude).(freq).average(1,6)= mean(VAR);	% 6 Reactive Q [var]
-waves.(amplitude).(freq).average(1,7)= mean(ASR)/av; % 7 Active serial resistance
-waves.(amplitude).(freq).average(1,8)= mean(RSR)/av; % 8 Reactive serial resistance (reactance)
-waves.(amplitude).(freq).average(1,9)= mean(IMP)/av; % 9 Impedance
-waves.(amplitude).(freq).average(1,10)= mean(Vac)/av;	% 10 AC Voltage
-waves.(amplitude).(freq).average(1,11)= mean(Vdc)/av;	% 11 DC Voltage
-waves.(amplitude).(freq).average(1,12)= mean(Vrms)/av;	% 12 TRMS Voltage
-waves.(amplitude).(freq).average(1,13)= mean(Vcf);	% Voltage Crest Factor
-waves.(amplitude).(freq).average(1,14)= mean(Iac);	% AC current component fundamental
-waves.(amplitude).(freq).average(1,15)= mean(Idc);	% DC current component
-waves.(amplitude).(freq).average(1,16)= mean(P_f);	% Power at fundamental f [W]
-waves.(amplitude).(freq).average(1,17)= mean(VA_f);	% Apparent power at fundamental f
-waves.(amplitude).(freq).average(1,18)= mean(P_dc);  % DC power
-waves.(amplitude).(freq).average(1,19)= mean(P_h);   % power at specific harmonic (default 3)
+average(1,1)=mean(Irms);	% 1 TRMS Current
+average(1,2)=mean(Freq);	% 2 Frequency
+average(1,3)=abs(mean(P)/av); % 3 Active power P [W]
+average(1,4)=mean(VA)/av;	% 4 Apparent power S [VA]
+average(1,5)=mean(PHI);	% 5 Angle PHI
+average(1,6)=mean(VAR);	% 6 Reactive Q [var]
+average(1,7)=mean(ASR)/av; % 7 Active serial resistance
+average(1,8)=mean(RSR)/av; % 8 Reactive serial resistance (reactance)
+average(1,9)=mean(IMP)/av; % 9 Impedance
+average(1,10)=mean(Vac)/av;	% 10 AC Voltage
+average(1,11)=mean(Vdc)/av;	% 11 DC Voltage
+average(1,12)=mean(Vrms)/av;	% 12 TRMS Voltage
+average(1,13)=mean(Vcf);	% Voltage Crest Factor
+average(1,14)=mean(Iac);	% AC current component fundamental
+average(1,15)=mean(Idc);	% DC current component
+average(1,16)=mean(P_f);	% Power at fundamental f [W]
+average(1,17)=mean(VA_f);	% Apparent power at fundamental f
+average(1,18)=mean(P_dc);  % DC power
+average(1,19)=mean(P_h);   % power at specific harmonic (default 3)
 
 % HP8904A( fg, 0, 440, 'sine', 2, 'on', 'B');	% Zero HP
 
