@@ -14,7 +14,7 @@ for iDC = DClist
             [outAC,amp] = setAC(iAC,f,fg,N4TH);   % set AC current
             tempdata = N4TH_1P(outAC,f,av,round(averaging),N4TH);  % measure 1 point
             amplitude = ['AC',num2str(100*(round(10*outAC))),'mA'];    % field title
-            data.(DCstr).(amplitude).(freq) = tempdata.(amplitude).(freq);
+            data.(DCstr).(amplitude).(freq).average = tempdata;
             fprintf ('current %0.1fA | Frequency %iHz | Amplitude %0.0fmV | Power %0.3fuW\n',iAC,f,1000*amp,1E6*data.(DCstr).(amplitude).(freq).average(1,3))
             if abs(outAC-iAC)>0.1;
                 fprintf ('Warning! current is %i instead of %i\n',outAC,iAC); 

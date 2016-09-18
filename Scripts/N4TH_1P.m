@@ -1,13 +1,10 @@
-function [waves] = N4TH_1P(I,f,av,averaging,N4TH)
-% N4TH_1P(current,f,av,averaging,N4th,fg) measures one-point from N4TH
+function [average] = N4TH_1P(av,averaging,N4TH)
+% N4TH_1P(av,averaging,N4th) measures one-point from N4TH
 % device
 %   f       - frequency
 %   av      - voltage amplification
 %   N4th    - N4TH object
 %   fg      - function generator object
-
-freq = ['F' num2str(f) 'Hz'];
-amplitude = ['AC',num2str(100*(round(10*I))),'mA'];
 
 for ind = 1:averaging
     % do avaraging over multiple measurements
@@ -51,24 +48,24 @@ for ind = 1:averaging
     P_h(ind)=data(11);  % power at specific harmonic (default 3)
 end
 
-waves.(amplitude).(freq).average(1,1)=mean(Irms);	% 1 TRMS Current
-waves.(amplitude).(freq).average(1,2)=mean(Freq);	% 2 Frequency
-waves.(amplitude).(freq).average(1,3)=abs(mean(P)/av); % 3 Active power P [W]
-waves.(amplitude).(freq).average(1,4)=mean(VA)/av;	% 4 Apparent power S [VA]
-waves.(amplitude).(freq).average(1,5)=mean(PHI);	% 5 Angle PHI
-waves.(amplitude).(freq).average(1,6)=mean(VAR);	% 6 Reactive Q [var]
-waves.(amplitude).(freq).average(1,7)=mean(ASR)/av; % 7 Active serial resistance
-waves.(amplitude).(freq).average(1,8)=mean(RSR)/av; % 8 Reactive serial resistance (reactance)
-waves.(amplitude).(freq).average(1,9)=mean(IMP)/av; % 9 Impedance
-waves.(amplitude).(freq).average(1,10)=mean(Vac)/av;	% 10 AC Voltage
-waves.(amplitude).(freq).average(1,11)=mean(Vdc)/av;	% 11 DC Voltage
-waves.(amplitude).(freq).average(1,12)=mean(Vrms)/av;	% 12 TRMS Voltage
-waves.(amplitude).(freq).average(1,13)=mean(Vcf);	% Voltage Crest Factor
-waves.(amplitude).(freq).average(1,14)=mean(Iac);	% AC current component fundamental
-waves.(amplitude).(freq).average(1,15)=mean(Idc);	% DC current component
-waves.(amplitude).(freq).average(1,16)=mean(P_f);	% Power at fundamental f [W]
-waves.(amplitude).(freq).average(1,17)=mean(VA_f);	% Apparent power at fundamental f
-waves.(amplitude).(freq).average(1,18)=mean(P_dc);  % DC power
-waves.(amplitude).(freq).average(1,19)=mean(P_h);   % power at specific harmonic (default 3)
+average(1,1)=mean(Irms);	% 1 TRMS Current
+average(1,2)=mean(Freq);	% 2 Frequency
+average(1,3)=abs(mean(P)/av); % 3 Active power P [W]
+average(1,4)=mean(VA)/av;	% 4 Apparent power S [VA]
+average(1,5)=mean(PHI);	% 5 Angle PHI
+average(1,6)=mean(VAR);	% 6 Reactive Q [var]
+average(1,7)=mean(ASR)/av; % 7 Active serial resistance
+average(1,8)=mean(RSR)/av; % 8 Reactive serial resistance (reactance)
+average(1,9)=mean(IMP)/av; % 9 Impedance
+average(1,10)=mean(Vac)/av;	% 10 AC Voltage
+average(1,11)=mean(Vdc)/av;	% 11 DC Voltage
+average(1,12)=mean(Vrms)/av;	% 12 TRMS Voltage
+average(1,13)=mean(Vcf);	% Voltage Crest Factor
+average(1,14)=mean(Iac);	% AC current component fundamental
+average(1,15)=mean(Idc);	% DC current component
+average(1,16)=mean(P_f);	% Power at fundamental f [W]
+average(1,17)=mean(VA_f);	% Apparent power at fundamental f
+average(1,18)=mean(P_dc);  % DC power
+average(1,19)=mean(P_h);   % power at specific harmonic (default 3)
 
 end
