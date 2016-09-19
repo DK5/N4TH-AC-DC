@@ -58,8 +58,9 @@ handles.output = hObject;
 % default answers
 defaultanswer = {'Ni-MgB2','round','1_3mm','Vtap 50mm','v1','1','0.05*(0.0013/2)^2*pi'};
 setappdata(0,'defAns',defaultanswer);
-defAnsMeas = {'10','50','1','60','40'};
+defAnsMeas = {'10','50','60','1','40','1'};
 setappdata(0,'defAnsMeas',defAnsMeas);
+setappdata(0,'intTemp',str2double(defAnsMeas{4}));
 
 tempStr = '15K'; run = defaultanswer;
 run{end} = eval(run{end}); % calculate volume
