@@ -3,6 +3,12 @@ function [ outDC ] = setDC( iDC , Ilimit , pwr_obj , N4TH )
 %   iDC - desired DC current
 %   pwr_obj  - power supplier object
 %   N4TH- N4TH object
+if ~iDC
+    outputHP(0,pwr_obj);      % turn off power supply
+    outDC = 0;
+    return;
+end
+    
 tic;
 figure('Name','DC current control');  % open fig
 errInterval = 0.02;

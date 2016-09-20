@@ -22,7 +22,7 @@ function varargout = N4TH_GUI(varargin)
 
 % Edit the above text to modify the response to help N4TH_GUI
 
-% Last Modified by GUIDE v2.5 20-Sep-2016 12:31:24
+% Last Modified by GUIDE v2.5 20-Sep-2016 16:57:24
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -75,6 +75,7 @@ set(handles.txtRunTitle,'string',runStr);
 Isrc = str2double(defAnsMeas{1});
 setappdata(0,'Isrc',Isrc);
 setappdata(0,'maxTemp',50);
+setappdata(0,'maxRate',5);
 setappdata(0,'TempSet',15);
 setappdata(0,'shutdownFlag',0);
 
@@ -117,15 +118,6 @@ catch
     devlist{ind,1} = '    - Power Supplier'; ind = ind + 1;
 end
 
-try     % voltmeter
-    volt_obj = GPconnect(8);     % check the address
-    prepVolt(volt_obj);
-    setappdata(0,'volt_obj',volt_obj);
-catch
-%     errordlg('Couldn''t connect to the voltmeter','Connection Error');
-    devlist{ind,1} = '    - Voltmeter'; ind = ind + 1;
-end
-
 try     % YOKOGAWA
     yoko_obj = GPconnect(23);     % check the address
     setYokoCurrent(Isrc,yoko_obj);
@@ -133,6 +125,16 @@ try     % YOKOGAWA
 catch
 %     errordlg('Couldn''t connect to the Yokogawa','Connection Error');
     devlist{ind,1} = '    - YOKOGAWA'; ind = ind + 1;
+end
+
+try     % voltmeter
+    volt_obj = GPconnect(8);     % check the address
+    prepVolt(volt_obj);
+    setappdata(0,'volt_obj',volt_obj);
+    setappdata(0,'lastTemp',getTemp(volt_obj,Isrc));
+catch
+%     errordlg('Couldn''t connect to the voltmeter','Connection Error');
+    devlist{ind,1} = '    - Voltmeter'; ind = ind + 1;
 end
 
 try     % XFR
@@ -150,7 +152,7 @@ if ind>2
 end
 
 % set temperature timer
-TempControl_timer = @(~,~) TempControl(handles);
+TempControl_timer = @(timerObj,~) TempControl(TimerObj,handles);
 tempTimer = timer;
 tempTimer.Name = 'Temperatre Control Timer';
 tempTimer.TimerFcn = TempControl_timer;
@@ -248,14 +250,17 @@ outputHP(0,pwr_obj);      % turn off power supply
 supVoltage(5,pwr_obj);  % supply 5V (DC)
 
 for iDC = DClist
-    HP8904A( fg, 0, 440, 'sine', 2, 'on', 'B') % turn off function generator
-    if iDC
-        dcI = setDC(iDC,Ilimit,pwr_obj,N4TH);	% set DC current
-    else
-        outputHP(0,pwr_obj);      % turn off power supply
-        dcI = 0;
-    end
+    HP8904A( fg, 0, 440, 'sine', 2, 'on', 'B'); % turn off function generator
+    dcI = setDC(iDC,Ilimit ,pwr_obj,N4TH);      % supply DC current
     DCstr = ['DC',num2str(round(dcI)),'A'];
+    [outAC,amp] = setAC(AClist(end),frequency(end),fg,N4TH);   % set AC current
+    HP8904A( fg, 0, 440, 'sine', 2, 'on', 'B') % turn off function generator
+    while ~amp     % wasn't able to supply current
+        wdlg = warndlg({'Amplification isn''t high enough to complete the measurement.';'Please turn up the amplification'});
+        uiwait(wdlg);
+        [outAC,amp] = setAC(AClist(end),frequency(end),fg,N4TH);   % set AC current
+        HP8904A( fg, 0, 440, 'sine', 2, 'on', 'B') % turn off function generator
+    end
     for iAC = AClist
         freqplot = [] ; lossPlot = [];
         for f = frequency
@@ -291,6 +296,7 @@ for iDC = DClist
                 freqplot(end+1) = f ; lossPlot(end+1) = tempdata(1,3);
                 cla(handles.axsPlot);
                 plot(handles.axsPlot,freqplot,lossPlot,'-o'); hold off;
+                xlabel('Frequency [Hz]'); ylabel('Losses');
                 fprintf ('current %0.1fA | Frequency %iHz | Amplitude %0.0fmV | Power %0.3fuW\n',iAC,f,1000*amp,1E6*data.(DCstr).(amplitude).(freq).average(1,3))
                 if abs(outAC-iAC)>0.1;
                     fprintf ('Warning! current is %i instead of %i\n',outAC,iAC); 
@@ -314,6 +320,7 @@ for iDC = DClist
 %     clc; fprintf ('Total elapsed time %0.1f minutes \n',ttime/60)
     data.(DCstr).iAC = sort(AClist);            % sort AC currents
     data.(DCstr).frequency = sort(frequency);   % sort AC frequencies
+    save(['C:\Users\Measurements PC\Dropbox\HTS Lab\Measurment PC\MATLAB\Data\' runTitle '_RAW'],'data');
     data.(DCstr).loss = LossCalculation(data.(DCstr));      % calculate loss
     data.(DCstr).lossH3 = LossCalculationH3(data.(DCstr));  % 
     for i = 1:numel(data.(DCstr).frequency)
@@ -491,10 +498,10 @@ average(1,19)=mean(P_h);   % power at specific harmonic (default 3)
 % HP8904A( fg, 0, 440, 'sine', 2, 'on', 'B');	% Zero HP
 
 % waves.(amplitude).(freq).average = 1:19;
-statusStr = {['TRMS Current:  ' num2str(average(1,1))];...
+statusStr = {['Apparent Power S [VA]:  ' num2str(average(1,4))];...
+             ['TRMS Current:  ' num2str(average(1,1))];...
              ['Frequency:  ' num2str(average(1,2))];...
              ['Active Power P [W]:  ' num2str(average(1,3))];...
-             ['Apparent Power S [VA]:  ' num2str(average(1,4))];...
              ['Angle PHI:  ' num2str(average(1,5))];...
              ['Reactive Q [var]:  ' num2str(average(1,6))];...
              ['Active Serial Resistance:  ' num2str(average(1,7))];...
@@ -512,9 +519,10 @@ statusStr = {['TRMS Current:  ' num2str(average(1,1))];...
              ['power at specific harmonic (default 3):  ' num2str(average(1,19))]};
 set(handles.txtStatus,'string',statusStr);
 
-function TempControl(handles)
+function TempControl(timer_obj,handles)
 % TempControl controls on temperature
 maxTemp = getappdata(0,'maxTemp');  % get temperature limit
+maxRate = getappdata(0,'maxRate');  % get temperature rising rate limit
 volt_obj = getappdata(0,'volt_obj');% get voltmeter object
 Isrc = getappdata(0,'Isrc');        % get sourced current in thermometer
 shutdownFlag = getappdata(0,'shutdownFlag');
@@ -523,7 +531,12 @@ TempV = getTemp(volt_obj,Isrc*1e-6);% calculate Temperature
 % TempV = 100*rand(1);
 spTemp = getappdata(0,'TempSet');
 Temp = sprintf('%0.2f',TempV);      % format as text
-if TempV > maxTemp   % check if Temp above allowed
+
+lastTemp = getappdata(0,'lastTemp');	% get last temperature
+Tspan = get(timer_obj,'InstantPeriod');
+rate = (TempV-lastTemp)/Tspan;
+
+if TempV > maxTemp || rate > maxRate   % check if Temp above allowed
     % Yes - shut down the system
     pwr_obj = getappdata(0,'pwr_obj');
     outputHP(0,pwr_obj);    % shutdown DC supplier
@@ -534,7 +547,10 @@ if TempV > maxTemp   % check if Temp above allowed
     set(handles.txtNowTemp,'string',[Temp,'K !!!']);
     setappdata(0,'shutdownFlag',1);
 elseif shutdownFlag && (abs(TempV - spTemp) < intTemp)
+    set(handles.txtNowTemp,'string',[Temp,'K - Stable']);
     setappdata(0,'shutdownFlag',0);
+elseif shutdownFlag
+    set(handles.txtNowTemp,'string',[Temp,'K - Relaxation']);
 else
     set(handles.txtNowTemp,'string',[Temp,'K']);
 end
@@ -700,3 +716,37 @@ setappdata(0,'Isrc',Isrc);
 yoko_obj = getappdata(0,'yoko_obj');
 setYokoCurrent(Isrc,yoko_obj);
 setappdata(0,'intTemp',str2double(run{4}));
+
+
+function edtSetRate_Callback(hObject, eventdata, handles)
+% hObject    handle to edtSetRate (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+currChar = get(handles.N4TH_GUI,'CurrentCharacter');
+if isequal(currChar,char(13)) %char(13) == enter key
+   % call the pushbutton callback
+   btnSetRate_Callback(handles.btnMaxTemp, eventdata, handles);
+end
+% Hints: get(hObject,'String') returns contents of edtSetRate as text
+%        str2double(get(hObject,'String')) returns contents of edtSetRate as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function edtSetRate_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to edtSetRate (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on button press in btnSetRate.
+function btnSetRate_Callback(hObject, eventdata, handles)
+% hObject    handle to btnSetRate (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+setappdata(0,'maxRate',str2double(get(handles.edtSetRate)));
