@@ -22,7 +22,7 @@ function varargout = N4TH_GUI(varargin)
 
 % Edit the above text to modify the response to help N4TH_GUI
 
-% Last Modified by GUIDE v2.5 18-Sep-2016 10:12:08
+% Last Modified by GUIDE v2.5 20-Sep-2016 12:31:24
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -54,6 +54,8 @@ function N4TH_GUI_OpeningFcn(hObject, eventdata, handles, varargin)
 
 % Choose default command line output for N4TH_GUI
 handles.output = hObject;
+% cd('C:\Users\Measurements PC\Dropbox\HTS Lab\Measurment PC\MATLAB');
+% path('C:\Users\Measurements PC\Dropbox\HTS Lab\Measurment PC\MATLAB\N4TH-AC-DC')
 
 % default answers
 defaultanswer = {'Ni-MgB2','round','1_3mm','Vtap 50mm','v1','1','0.05*(0.0013/2)^2*pi'};
@@ -74,6 +76,7 @@ Isrc = str2double(defAnsMeas{1});
 setappdata(0,'Isrc',Isrc);
 setappdata(0,'maxTemp',50);
 setappdata(0,'TempSet',15);
+setappdata(0,'shutdownFlag',0);
 
 % connect to objects
 devlist = {'Couldn''t connect to the following devices:'}; ind = 2;
@@ -237,17 +240,28 @@ MeasConf = getappdata(0,'defAnsMeas');
 Ilimit = str2double(MeasConf{5});
 av = str2double(MeasConf{6});
 
+pwr_obj = getappdata(0,'pwr_obj');
+fg = getappdata(0,'fg');
+N4TH = getappdata(0,'N4TH');
+
 outputHP(0,pwr_obj);      % turn off power supply
 supVoltage(5,pwr_obj);  % supply 5V (DC)
 
 for iDC = DClist
     HP8904A( fg, 0, 440, 'sine', 2, 'on', 'B') % turn off function generator
-    dcI = setDC(iDC,Ilimit,pwr_obj,N4TH);	% set DC current
+    if iDC
+        dcI = setDC(iDC,Ilimit,pwr_obj,N4TH);	% set DC current
+    else
+        outputHP(0,pwr_obj);      % turn off power supply
+        dcI = 0;
+    end
     DCstr = ['DC',num2str(round(dcI)),'A'];
     for iAC = AClist
+        freqplot = [] ; lossPlot = [];
         for f = frequency
-            cla(handles.axsPlot);
             HP8904A( fg, 0, 440, 'sine', 2, 'on', 'B') % turn off function generator
+            pause(0.5);
+            [outAC,amp] = setAC(iAC,f,fg,N4TH);   % set AC current
             freq = ['F',num2str(f),'Hz'];   % field title
             stopFlag = 0;
             shutdownFlag = 1;   % enter the while loop; not really off
@@ -266,16 +280,17 @@ for iDC = DClist
                     % measurement
                     dcI = setDC(iDC,Ilimit,pwr_obj,N4TH);	% set DC current
                     DCstr = ['DC',num2str(round(dcI)),'A'];
+                    [outAC,amp] = setAC(iAC,f,fg,N4TH);   % set AC current
                 end
                 runStr{2} = ['DC = ',num2str(iDC),'A'];
                 runStr{3} = ['AC = ',num2str(iAC),'A  |  F = ',num2str(f),'Hz'];
                 set(handles.txtRunTitle,'string',runStr);
-                [outAC,amp] = setAC(iAC,f,fg,N4TH);   % set AC current
-                tempdata = N4TH_1P_GUI(av,round(averaging),N4TH);  % measure 1 point
+                tempdata = N4TH_1P_GUI(av,round(averaging),N4TH,handles);  % measure 1 point
                 amplitude = ['AC',num2str(100*(round(10*outAC))),'mA'];    % field title
                 data.(DCstr).(amplitude).(freq).average = tempdata;
-                fplot(end+1) = f ; lossPlot(end+1) = tempdata(1,3);
-                plot(handles.axsPlot,fplot,lossPlot,'-o'); hold off;
+                freqplot(end+1) = f ; lossPlot(end+1) = tempdata(1,3);
+                cla(handles.axsPlot);
+                plot(handles.axsPlot,freqplot,lossPlot,'-o'); hold off;
                 fprintf ('current %0.1fA | Frequency %iHz | Amplitude %0.0fmV | Power %0.3fuW\n',iAC,f,1000*amp,1E6*data.(DCstr).(amplitude).(freq).average(1,3))
                 if abs(outAC-iAC)>0.1;
                     fprintf ('Warning! current is %i instead of %i\n',outAC,iAC); 
@@ -306,13 +321,14 @@ for iDC = DClist
     end
     runTitle = [runTitleOrg DCstr];     % run title - with DC current
     data.(DCstr).runtitle = runTitle;   
-    save(runTitle,'data');
+    save(['C:\Users\Measurements PC\Dropbox\HTS Lab\Measurment PC\MATLAB\Data\' runTitle],'data');
     % Plot and figure save
-    h = lossplot_GUI(data.(DCstr));
-    saveas(h,[pwd '\Figures\' runTitle],'fig')
+    lossplot_GUI(data.(DCstr),handles);
+    h = lossplot(data.(DCstr),handles);
+    hgsave(h,['C:\Users\Measurements PC\Dropbox\HTS Lab\Measurment PC\MATLAB\Figures\' runTitle])
+%     close(h);
 end
 outputHP(0,pwr_obj);    % turn off DC supply
-
 
 
 function edtTemp_Callback(hObject, eventdata, handles)
@@ -475,26 +491,25 @@ average(1,19)=mean(P_h);   % power at specific harmonic (default 3)
 % HP8904A( fg, 0, 440, 'sine', 2, 'on', 'B');	% Zero HP
 
 % waves.(amplitude).(freq).average = 1:19;
-statusStr = {['TRMS Current:  ' num2str(waves.(amplitude).(freq).average(1,1))];...
-             ['Frequency:  ' num2str(waves.(amplitude).(freq).average(1,2))];...
-             ['Active Power P [W]:  ' num2str(waves.(amplitude).(freq).average(1,3))];...
-             ['Apparent Power S [VA]:  ' num2str(waves.(amplitude).(freq).average(1,4))];...
-             ['Angle PHI:  ' num2str(waves.(amplitude).(freq).average(1,5))];...
-             ['Reactive Q [var]:  ' num2str(waves.(amplitude).(freq).average(1,6))];...
-             ['Active Serial Resistance:  ' num2str(waves.(amplitude).(freq).average(1,7))];...
-             ['Reactive serial resistance (reactance):  ' num2str(waves.(amplitude).(freq).average(1,8))];...
-             ['Impedance:  ' num2str(waves.(amplitude).(freq).average(1,9))];...
-             ['AC Voltage:  ' num2str(waves.(amplitude).(freq).average(1,10))];...
-             ['DC Voltage:  ' num2str(waves.(amplitude).(freq).average(1,11))];...
-             ['TRMS Voltage:  ' num2str(waves.(amplitude).(freq).average(1,12))];...
-             ['Voltage Crest Factor:  ' num2str(waves.(amplitude).(freq).average(1,13))];...
-             ['AC Current Component Fundamental:  ' num2str(waves.(amplitude).(freq).average(1,14))];...
-             ['DC Current Component:  ' num2str(waves.(amplitude).(freq).average(1,15))];...
-             ['Power at Fundamental f [W]:  ' num2str(waves.(amplitude).(freq).average(1,16))];...
-             ['Apparent Power at Fundamental f:  ' num2str(waves.(amplitude).(freq).average(1,17))];...
-             ['DC Power:  ' num2str(waves.(amplitude).(freq).average(1,18))];...
-             ['power at specific harmonic (default 3):  ' num2str(waves.(amplitude).(freq).average(1,19))]};
-
+statusStr = {['TRMS Current:  ' num2str(average(1,1))];...
+             ['Frequency:  ' num2str(average(1,2))];...
+             ['Active Power P [W]:  ' num2str(average(1,3))];...
+             ['Apparent Power S [VA]:  ' num2str(average(1,4))];...
+             ['Angle PHI:  ' num2str(average(1,5))];...
+             ['Reactive Q [var]:  ' num2str(average(1,6))];...
+             ['Active Serial Resistance:  ' num2str(average(1,7))];...
+             ['Reactive serial resistance (reactance):  ' num2str(average(1,8))];...
+             ['Impedance:  ' num2str(average(1,9))];...
+             ['AC Voltage:  ' num2str(average(1,10))];...
+             ['DC Voltage:  ' num2str(average(1,11))];...
+             ['TRMS Voltage:  ' num2str(average(1,12))];...
+             ['Voltage Crest Factor:  ' num2str(average(1,13))];...
+             ['AC Current Component Fundamental:  ' num2str(average(1,14))];...
+             ['DC Current Component:  ' num2str(average(1,15))];...
+             ['Power at Fundamental f [W]:  ' num2str(average(1,16))];...
+             ['Apparent Power at Fundamental f:  ' num2str(average(1,17))];...
+             ['DC Power:  ' num2str(average(1,18))];...
+             ['power at specific harmonic (default 3):  ' num2str(average(1,19))]};
 set(handles.txtStatus,'string',statusStr);
 
 function TempControl(handles)
@@ -540,18 +555,20 @@ volt_obj = getappdata(0,'volt_obj');
 xfr_obj = getappdata(0,'xfr_obj');
 % setTemp(spTemp,interval,Rth,Plimit,volt_obj,xfr_obj);
 
-function h = lossplot_GUI(data,handles)
+function Fig2 = lossplot_GUI(data,handles)
 [X,Y] = meshgrid(sort(data.iAC),sort(data.frequency));
-axs = handles.axsPlot;
-h = surf(axs,X,Y,1000.*data.loss','FaceColor','interp','FaceLighting','gouraud');
+axs = handles.axs3D;
+surf(axs,X,Y,1000.*data.loss','FaceColor','interp','FaceLighting','gouraud');
 % X = 1:5:100; Y = 100:17:500;
 % Z = Y'*X;
 % h = surf(handles.axsPlot,X,Y,Z,'FaceColor','interp','FaceLighting','gouraud');
-title(axs,data.runTitle,'Interpreter','none','Fontsize',12); 
-axis(axs,[min(data.iAC) max(data.iAC) 200 max(data.frequency) 1100*min(min(data.loss,[],1)) 1100*max(max(data.loss,[],1))]);
+title(axs,data.runtitle,'Interpreter','none','Fontsize',12); 
+axis(axs,[min(data.iAC) max(data.iAC) min(data.frequency) max(data.frequency) 1100*min(min(data.loss,[],1)) 1100*max(max(data.loss,[],1))]);
 xlabel(axs,'Current [A]rms','Fontsize',12);ylabel(axs,'frequency [Hz]','Fontsize',12);
 zlabel(axs,'Losses [mW]','Fontsize',12);
 set(axs,'FontSize',12);
+Fig2 = figure;
+copyobj(axs, Fig2);
 
 
 function edtMaxTemp_Callback(hObject, eventdata, handles)

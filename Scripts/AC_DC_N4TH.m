@@ -2,12 +2,18 @@
 outputHP(0,pwr_obj);      % turn off power supply
 supVoltage(5,pwr_obj);  % supply 5V (DC)
 Ilimit = 15;
-
+tic;
 for iDC = DClist
     HP8904A( fg, 0, 440, 'sine', 2, 'on', 'B') % turn off function generator
-    dcI = setDC(iDC,Ilimit,pwr_obj,N4TH);	% set DC current
+    if iDC
+        dcI = setDC(iDC,Ilimit,pwr_obj,N4TH);	% set DC current
+    else
+        outputHP(0,pwr_obj);      % turn off power supply
+        dcI = 0;
+    end
     DCstr = ['DC',num2str(round(dcI)),'A'];
     for iAC = AClist
+        f = frequency(1);
         [outAC,amp] = setAC(iAC,f,fg,N4TH);   % set AC current
         for f = frequency
             setFreq(fg,f,'B');
