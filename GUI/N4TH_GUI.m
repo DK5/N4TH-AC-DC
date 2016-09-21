@@ -152,7 +152,7 @@ if ind>2
 end
 
 % set temperature timer
-TempControl_timer = @(timerObj,~) TempControl(TimerObj,handles);
+TempControl_timer = @(timerObj,~) TempControl(timerObj,handles);
 tempTimer = timer;
 tempTimer.Name = 'Temperatre Control Timer';
 tempTimer.TimerFcn = TempControl_timer;
@@ -521,6 +521,7 @@ set(handles.txtStatus,'string',statusStr);
 
 function TempControl(timer_obj,handles)
 % TempControl controls on temperature
+% timer_obj.TasksExecuted
 maxTemp = getappdata(0,'maxTemp');  % get temperature limit
 maxRate = getappdata(0,'maxRate');  % get temperature rising rate limit
 volt_obj = getappdata(0,'volt_obj');% get voltmeter object
@@ -554,6 +555,7 @@ elseif shutdownFlag
 else
     set(handles.txtNowTemp,'string',[Temp,'K']);
 end
+setappdata(0,'lastTemp',TempV);
 
 
 % --- Executes on button press in btnSetTemp.
@@ -749,4 +751,4 @@ function btnSetRate_Callback(hObject, eventdata, handles)
 % hObject    handle to btnSetRate (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-setappdata(0,'maxRate',str2double(get(handles.edtSetRate)));
+setappdata(0,'maxRate',str2double(get(handles.edtSetRate,'string')));
