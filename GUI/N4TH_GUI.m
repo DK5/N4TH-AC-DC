@@ -253,6 +253,7 @@ for iDC = DClist
     HP8904A( fg, 0, 440, 'sine', 2, 'on', 'B'); % turn off function generator
     dcI = setDC(iDC,Ilimit ,pwr_obj,N4TH);      % supply DC current
     DCstr = ['DC',num2str(round(dcI)),'A'];
+    runTitle = [runTitleOrg DCstr];     % run title - with DC current
     [outAC,amp] = setAC(AClist(end),frequency(end),fg,N4TH);   % set AC current
     HP8904A( fg, 0, 440, 'sine', 2, 'on', 'B') % turn off function generator
     while ~amp     % wasn't able to supply current
@@ -307,6 +308,7 @@ for iDC = DClist
                 % if system turned off during measurement - start over the
                 % next loop
             end
+            save(['C:\Users\Measurements PC\Dropbox\HTS Lab\Measurment PC\MATLAB\Data\' runTitle '_RAW'],'data');
         end
         
         outDC = getDC(N4TH);    % check DC current again
@@ -326,7 +328,6 @@ for iDC = DClist
     for i = 1:numel(data.(DCstr).frequency)
         data.(DCstr).lossPVPC(:,i) = data.(DCstr).loss(:,i)./(data.(DCstr).frequency(i)*volume);
     end
-    runTitle = [runTitleOrg DCstr];     % run title - with DC current
     data.(DCstr).runtitle = runTitle;   
     save(['C:\Users\Measurements PC\Dropbox\HTS Lab\Measurment PC\MATLAB\Data\' runTitle],'data');
     % Plot and figure save
