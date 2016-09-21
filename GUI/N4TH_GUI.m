@@ -296,7 +296,7 @@ for iDC = DClist
                 freqplot(end+1) = f ; lossPlot(end+1) = tempdata(1,3);
                 cla(handles.axsPlot);
                 plot(handles.axsPlot,freqplot,lossPlot,'-o'); hold off;
-                xlabel('Frequency [Hz]'); ylabel('Losses');
+                xlabel(axsPlot,'Frequency [Hz]'); ylabel(axsPlot,'Losses');
                 fprintf ('current %0.1fA | Frequency %iHz | Amplitude %0.0fmV | Power %0.3fuW\n',iAC,f,1000*amp,1E6*data.(DCstr).(amplitude).(freq).average(1,3))
                 if abs(outAC-iAC)>0.1;
                     fprintf ('Warning! current is %i instead of %i\n',outAC,iAC); 
@@ -440,7 +440,7 @@ for ind = 1:averaging
     pause(1.5);
     while isempty(reading)
         pause(.5);
-        reading=query(N4TH,  'LCR?');
+        reading=query(N4TH,'LCR?');
     end
     LCR = textscan(reading, '%s', 'Delimiter', ',', 'CommentStyle', '\','headerlines',0);
     LCR = LCR{:}; LCR = str2double(LCR);
@@ -450,7 +450,7 @@ for ind = 1:averaging
         pause(.5);
         reading = query(N4TH,  'POWER?');    
     end
-    fprintf(N4TH,  'FAST,OFF');
+    fprintf(N4TH,'FAST,OFF');
     data = textscan(reading, '%s', 'Delimiter', ',', 'CommentStyle', '\','headerlines',0);
     data = data{:}; data = str2double(data);
     

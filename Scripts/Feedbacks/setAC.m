@@ -28,7 +28,7 @@ outAC = getAC(N4TH);
 
 ind = 1;    
 % feedback loop
-while abs(outAC/iAC - 1) > 0.002
+while abs(outAC/iAC - 1) > 0.02
     amp = amp*(iAC/outAC);  % fixing voltage amplitude
     if amp >= 1.8 && ind <= 3
         % if amplitude is too high and its under the 3rd try

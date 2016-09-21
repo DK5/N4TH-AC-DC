@@ -65,7 +65,7 @@ while ~stable
     
     
     if numel(err) > cor && ~sum(abs(err((end-cor):end)) > errInterval)
-        % if last 10 temperatures were in the interval - stop
+        % if last 10 readings were in the interval - stop
         stable = 1;
     end
 end
