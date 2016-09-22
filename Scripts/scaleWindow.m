@@ -1,17 +1,26 @@
-function scaleWindow( loss, N4TH)
+function scaleWindow(N4TH)
 % scaleWindow( loss, N4TH) scales the measurement time window according to
 % the measured loss value
 %   N4TH - N4TH object
 
-fprintf(N4TH,'FAST,ON');
-reading = query(N4TH,'POWER?');
-fprintf(N4TH,'FAST,OFF');
-data = textscan(reading, '%s', 'Delimiter', ',', 'CommentStyle', '\','headerlines',0);
-data = data{:}; data = str2double(data);
-loss = data(4);
+fprintf(N4TH,'SPEED,WINDOW,1');
+% fprintf(N4TH,'SMOOTH,SLOW');
+pause(2);
 
-scale = [50e-9,200e-9,1e-6]; % Watt
-windowStr = ['5','3','1','0.5'];    % window scale - seconds
+reading=[];
+while isempty(reading)
+    
+    reading = query(N4TH,'POWER?'); 
+    pause(.5); reading=[];
+    reading = query(N4TH,'POWER?');
+end
+
+data = textscan(reading,'%s', 'Delimiter', ',', 'CommentStyle', '\','headerlines',0);
+data = data{:}; data = str2double(data);
+loss = data(2);
+
+scale = [100e-9,1000e-9]; % Watt
+windowStr = ['5','3','1'];    % window scale - seconds
 
 logic = loss < scale;	% find scale
 [~,ind] = find(logic,1,'first');	% proper scale index is the first bigger
@@ -20,6 +29,7 @@ if isempty(ind)
     ind = length(windowStr);
 end
 
-fprintf(N4TH,['SPEED,WINDOW' windowStr(ind)]);
+windowStr(ind);
+fprintf(N4TH,['SPEED,WINDOW,' windowStr(ind)]);
 
 end

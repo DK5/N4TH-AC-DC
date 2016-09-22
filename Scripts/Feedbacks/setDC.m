@@ -9,8 +9,11 @@ if ~iDC
     return;
 end
     
+fprintf(N4TH,'SPEED,WINDOW,0.2');
+pause(0.25);
+
 tic;
-figure('Name','DC current control');  % open fig
+figure(5);  % open fig ,'Name','DC current control'
 errInterval = 0.02;
 
 % outputHP(0,pwr_obj);        % turn off
@@ -59,6 +62,8 @@ while ~stable
         [1 length(outDC)],[iDC iDC],'-r',...
         [1 length(outDC)],(1-errInterval)*[iDC iDC],'-g',...
         [1 length(outDC)],(1+errInterval)*[iDC iDC],'-g');
+    title('DC current control')
+
     text(1.2,0.5*iDC,num2str(toc));
 %     ylim([(1-25*errInterval) (1+25*errInterval)]*iDC);
     hold off;

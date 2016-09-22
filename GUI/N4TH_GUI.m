@@ -294,10 +294,11 @@ for iDC = DClist
                 tempdata = N4TH_1P_GUI(av,round(averaging),N4TH,handles);  % measure 1 point
                 amplitude = ['AC',num2str(100*(round(10*outAC))),'mA'];    % field title
                 data.(DCstr).(amplitude).(freq).average = tempdata;
+                data.(DCstr).(amplitude).(freq).temp = str2double(get(handles.txtNowTemp,'string'));
                 freqplot(end+1) = f ; lossPlot(end+1) = tempdata(1,3);
                 cla(handles.axsPlot);
                 plot(handles.axsPlot,freqplot,lossPlot,'-o'); hold off;
-                xlabel(axsPlot,'Frequency [Hz]'); ylabel(axsPlot,'Losses');
+                xlabel(handles.axsPlot,'Frequency [Hz]'); ylabel(handles.axsPlot,'Losses');
                 fprintf ('current %0.1fA | Frequency %iHz | Amplitude %0.0fmV | Power %0.3fuW\n',iAC,f,1000*amp,1E6*data.(DCstr).(amplitude).(freq).average(1,3))
                 if abs(outAC-iAC)>0.1;
                     fprintf ('Warning! current is %i instead of %i\n',outAC,iAC); 
@@ -312,7 +313,7 @@ for iDC = DClist
         end
         
         outDC = getDC(N4TH);    % check DC current again
-        if (outDC/iDC - 1) < 0.02   
+        if abs(outDC/iDC - 1) > 0.05   
             % if not in the interval
             setDC(iDC,Ilimit,pwr_obj,N4TH);    % set DC current
         end
@@ -332,8 +333,8 @@ for iDC = DClist
     save(['C:\Users\Measurements PC\Dropbox\HTS Lab\Measurment PC\MATLAB\Data\' runTitle],'data');
     % Plot and figure save
     lossplot_GUI(data.(DCstr),handles);
-    h = lossplot(data.(DCstr),handles);
-    hgsave(h,['C:\Users\Measurements PC\Dropbox\HTS Lab\Measurment PC\MATLAB\Figures\' runTitle])
+%     h = lossplot(data.(DCstr));
+%     hgsave(h,['C:\Users\Measurements PC\Dropbox\HTS Lab\Measurment PC\MATLAB\Figures\' runTitle])
 %     close(h);
 end
 outputHP(0,pwr_obj);    % turn off DC supply
@@ -436,9 +437,10 @@ function [average] = N4TH_1P_GUI(av,averaging,N4TH,handles)
 %   fg      - function generator object
 for ind = 1:averaging
     % do avaraging over multiple measurements
+    scaleWindow(N4TH);
     reading = [];
-    fprintf(N4TH,'FAST,ON');
-    pause(1.5);
+%     fprintf(N4TH,'FAST,ON');
+    pause(.5);
     while isempty(reading)
         pause(.5);
         reading=query(N4TH,'LCR?');
@@ -449,9 +451,9 @@ for ind = 1:averaging
     reading=[];
     while isempty(reading)
         pause(.5);
-        reading = query(N4TH,  'POWER?');    
+        reading = query(N4TH,'POWER?');    
     end
-    fprintf(N4TH,'FAST,OFF');
+%     fprintf(N4TH,'FAST,OFF');
     data = textscan(reading, '%s', 'Delimiter', ',', 'CommentStyle', '\','headerlines',0);
     data = data{:}; data = str2double(data);
     
@@ -506,7 +508,7 @@ statusStr = {['Apparent Power S [VA]:  ' num2str(average(1,4))];...
              ['Angle PHI:  ' num2str(average(1,5))];...
              ['Reactive Q [var]:  ' num2str(average(1,6))];...
              ['Active Serial Resistance:  ' num2str(average(1,7))];...
-             ['Reactive serial resistance (reactance):  ' num2str(average(1,8))];...
+             ['Reactive serial resistance:  ' num2str(average(1,8))];...
              ['Impedance:  ' num2str(average(1,9))];...
              ['AC Voltage:  ' num2str(average(1,10))];...
              ['DC Voltage:  ' num2str(average(1,11))];...
@@ -514,7 +516,7 @@ statusStr = {['Apparent Power S [VA]:  ' num2str(average(1,4))];...
              ['Voltage Crest Factor:  ' num2str(average(1,13))];...
              ['AC Current Component Fundamental:  ' num2str(average(1,14))];...
              ['DC Current Component:  ' num2str(average(1,15))];...
-             ['Power at Fundamental f [W]:  ' num2str(average(1,16))];...
+             ['Power Fundamental f [W]:  ' num2str(average(1,16))];...
              ['Apparent Power at Fundamental f:  ' num2str(average(1,17))];...
              ['DC Power:  ' num2str(average(1,18))];...
              ['power at specific harmonic (default 3):  ' num2str(average(1,19))]};

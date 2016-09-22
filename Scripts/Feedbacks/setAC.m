@@ -19,6 +19,8 @@ else
     noise=f*5;
 end
 fprintf(N4TH,['NOISEF,PHASE1,ON,' num2str(noise)]); % set low pass filter
+fprintf(N4TH,'SPEED,WINDOW,0.5');
+pause(0.6);
 
 % read AC current
 fprintf(N4TH,'COUPLI,PHASE1,ACONLY'); % set AC coupling
@@ -28,7 +30,7 @@ outAC = getAC(N4TH);
 
 ind = 1;    
 % feedback loop
-while abs(outAC/iAC - 1) > 0.02
+while abs(outAC/iAC - 1) > 0.004
     amp = amp*(iAC/outAC);  % fixing voltage amplitude
     if amp >= 1.8 && ind <= 3
         % if amplitude is too high and its under the 3rd try
