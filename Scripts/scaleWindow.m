@@ -20,7 +20,7 @@ data = data{:}; data = str2double(data);
 loss = data(2);
 
 scale = [100e-9,1000e-9]; % Watt
-windowStr = ['5','3','1'];    % window scale - seconds
+windowStr = ['3','2','1'];    % window scale - seconds
 
 logic = loss < scale;	% find scale
 [~,ind] = find(logic,1,'first');	% proper scale index is the first bigger

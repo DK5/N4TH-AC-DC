@@ -1,16 +1,19 @@
-scaleWindow(N4TH);
+
 reading = [];
 %     fprintf(N4TH,'FAST,ON');
 pause(.5);
+setAC(.5,217,fg,N4TH);
+scaleWindow(N4TH);
 reading=[];
 while isempty(reading)
-    pause(.5);
-%     reading = query(N4TH,'POWER?');
-    reading = query(N4TH,'DISPLAY?');
+    pause(2);
+%     reading1 = query(N4TH,'POWER?')
+    reading = query(N4TH,'DISPLAY?')
 end
 %     fprintf(N4TH,'FAST,OFF');
 data = textscan(reading,'%s','Delimiter',',','CommentStyle','\','headerlines',0);
-data = data{:}; data = str2double(data);
+data = data{:}; data = str2double(data)'
+
 
 while isempty(reading)
     pause(.5);

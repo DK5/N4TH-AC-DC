@@ -156,7 +156,7 @@ TempControl_timer = @(timerObj,~) TempControl(timerObj,handles);
 tempTimer = timer;
 tempTimer.Name = 'Temperatre Control Timer';
 tempTimer.TimerFcn = TempControl_timer;
-tempTimer.Period = 1;
+tempTimer.Period = 0.35;
 tempTimer.ExecutionMode = 'fixedRate';
 start(tempTimer);
 setappdata(0,'tempTimer',tempTimer);
@@ -233,7 +233,7 @@ dcStr = get(handles.edtDC,'string');
 DClist = str2num(cell2mat(strsplit(dcStr)));
 
 runStr = get(handles.txtRunTitle,'string');
-runTitleOrg = getappdata(0,'runTitle');
+runTitleOrg = runStr{1};
 config = getappdata(0,'defAns');
 averaging = str2double(config{6});
 eval(['volume = ' config{7} ';']);
@@ -296,11 +296,12 @@ for iDC = DClist
                 tempdata = N4TH_1P_GUI(av,round(averaging),N4TH,handles);  % measure 1 point
                 amplitude = ['AC',num2str(100*(round(10*outAC))),'mA'];    % field title
                 data.(DCstr).(amplitude).(freq).average = tempdata;
-                data.(DCstr).(amplitude).(freq).temp = getTemp(volt_obj,Isrc);
+                TempStr = get(handles.txtNowTemp,'string');
+                data.(DCstr).(amplitude).(freq).temp = str2num(TempStr(end-1));
                 freqplot(end+1) = f ; lossPlot(end+1) = tempdata(1,3);
                 cla(handles.axsPlot);
                 plot(handles.axsPlot,freqplot,lossPlot,'-o'); hold off;
-                xlabel(handles.axsPlot,'Frequency [Hz]'); ylabel(handles.axsPlot,'Losses');
+                xlabel(handles.axsPlot,'Frequency [Hz]'); ylabel(handles.axsPlot,'Loss [W]');
                 fprintf ('current %0.1fA | Frequency %iHz | Amplitude %0.0fmV | Power %0.3fuW\n',iAC,f,1000*amp,1E6*data.(DCstr).(amplitude).(freq).average(1,3))
                 if abs(outAC-iAC)>0.1;
                     fprintf ('Warning! current is %i instead of %i\n',outAC,iAC); 
@@ -335,9 +336,9 @@ for iDC = DClist
     save(['C:\Users\Measurements PC\Dropbox\HTS Lab\Measurment PC\MATLAB\Data\' runTitle],'data');
     % Plot and figure save
     lossplot_GUI(data.(DCstr),handles);
-%     h = lossplot(data.(DCstr));
-%     hgsave(h,['C:\Users\Measurements PC\Dropbox\HTS Lab\Measurment PC\MATLAB\Figures\' runTitle])
-%     close(h);
+    h = lossplot(data.(DCstr));
+    hgsave(h,['C:\Users\Measurements PC\Dropbox\HTS Lab\Measurment PC\MATLAB\Figures\' runTitle])
+    close(h);
 end
 outputHP(0,pwr_obj);    % turn off DC supply
 
@@ -437,70 +438,57 @@ function [average] = N4TH_1P_GUI(av,averaging,N4TH,handles)
 %   av      - voltage amplification
 %   N4th    - N4TH object
 %   fg      - function generator object
+reading=[];
 for ind = 1:averaging
-    % do avaraging over multiple measurements
-    scaleWindow(N4TH);
-    reading = [];
-%     fprintf(N4TH,'FAST,ON');
-    pause(.5);
     while isempty(reading)
-        pause(.5);
-        reading=query(N4TH,'LCR?');
+        pause(0.5);
+        reading = query(N4TH,'DISPLAY?');
     end
-    LCR = textscan(reading, '%s', 'Delimiter', ',', 'CommentStyle', '\','headerlines',0);
-    LCR = LCR{:}; LCR = str2double(LCR);
-    
-    reading=[];
-    while isempty(reading)
-        pause(.5);
-        reading = query(N4TH,'POWER?');    
-    end
-%     fprintf(N4TH,'FAST,OFF');
-    data = textscan(reading, '%s', 'Delimiter', ',', 'CommentStyle', '\','headerlines',0);
-    data = data{:}; data = str2double(data);
-    
-    Freq(ind)=data(1);
-    VA(ind)=data(4);
-    VAR(ind)=data(6);
-    ASR(ind)=LCR(6);
-    RSR(ind)=LCR(11);
-    IMP(ind)=LCR(4);
-    Irms(ind)=data(21);
-    Iac(ind)=data(22);
-    Idc(ind)=data(23);
-    P(ind)=data(2);
-    PHI(ind)=data(15);
-    Vrms(ind)=data(12);
-    Vac(ind)=data(13);
-    Vdc(ind)=data(14);
-    Vcf(ind)=data(17);
-    P_f(ind)=data(3);	% power at fundamental f
-    VA_f(ind)=data(5);	% power at fundamental f
-    P_dc(ind)=data(10); % DC power
-    P_h(ind)=data(11);  % power at specific harmonic (default 3)
+    data = str2num(reading);
 end
+RMS = mean(data,1);
 
-average(1,1)=mean(Irms);	% 1 TRMS Current
-average(1,2)=mean(Freq);	% 2 Frequency
-average(1,3)=abs(mean(P)/av); % 3 Active power P [W]
-average(1,4)=mean(VA)/av;	% 4 Apparent power S [VA]
-average(1,5)=mean(PHI);	% 5 Angle PHI
-average(1,6)=mean(VAR);	% 6 Reactive Q [var]
-average(1,7)=mean(ASR)/av; % 7 Active serial resistance
-average(1,8)=mean(RSR)/av; % 8 Reactive serial resistance (reactance)
-average(1,9)=mean(IMP)/av; % 9 Impedance
-average(1,10)=mean(Vac)/av;	% 10 AC Voltage
-average(1,11)=mean(Vdc)/av;	% 11 DC Voltage
-average(1,12)=mean(Vrms)/av;	% 12 TRMS Voltage
-average(1,13)=mean(Vcf);	% Voltage Crest Factor
-average(1,14)=mean(Iac);	% AC current component fundamental
-average(1,15)=mean(Idc);	% DC current component
-average(1,16)=mean(P_f);	% Power at fundamental f [W]
-average(1,17)=mean(VA_f);	% Apparent power at fundamental f
-average(1,18)=mean(P_dc);  % DC power
-average(1,19)=mean(P_h);   % power at specific harmonic (default 3)
+scaleWindow(N4TH);
+reading=[];
+for ind = 1:averaging
+    while isempty(reading)
+        pause(2);
+        reading = query(N4TH,'DISPLAY?');
+    end
+    data = str2num(reading);
+end
+adata = mean(data,1);
 
-% HP8904A( fg, 0, 440, 'sine', 2, 'on', 'B');	% Zero HP
+fprintf(N4TH,'LCR');
+reading = [];
+for ind = 1:averaging
+    while isempty(reading)
+        pause(2);
+        reading = query(N4TH,'DISPLAY?');
+    end
+    data = str2num(reading);
+end
+LCR = mean(data,1);
+
+average(1) = RMS(2);	% 1 TRMS Current
+average(2) = adata(15);	% 2 Frequency
+average(3) = abs(adata(1)/av); % 3 Active power P [W]
+average(4) = adata(3)/av;	% 4 Apparent power S [VA]
+average(5) = LCR(4);	% 5 Angle PHI
+average(6) = adata(5);	% 6 Reactive Q [var]
+average(7) = LCR(2)/av; % 7 Active serial resistance
+average(8) = LCR(3)/av; % 8 Reactive serial resistance (reactance)
+average(9) = LCR(1)/av; % 9 Impedance
+average(10)= RMS(5)/av;	% 10 AC Voltage
+average(11)= RMS(3)/av;	% 11 DC Voltage
+average(12)= RMS(1)/av;	% 12 TRMS Voltage
+average(13)= RMS(9);	% Voltage Crest Factor
+average(14)= adata(13);	% AC current component fundamental
+average(15)= RMS(4);	% DC current component
+average(16) = adata(2);	% Power at fundamental f [W]
+average(17) = adata(4);	% Apparent power at fundamental f
+average(18) = adata(18);  % DC power
+average(19) = adata(16);   % power at specific harmonic (default 3)
 
 % waves.(amplitude).(freq).average = 1:19;
 statusStr = {['Apparent Power S [VA]:  ' num2str(average(1,4))];...
@@ -539,17 +527,25 @@ spTemp = getappdata(0,'TempSet');
 Temp = sprintf('%0.2f',TempV);      % format as text
 
 lastTemp = getappdata(0,'lastTemp');	% get last temperature
-Tspan = get(timer_obj,'InstantPeriod');
-rate = (TempV-lastTemp)/Tspan;
+tasks = timer_obj.TasksExecuted;
+if tasks > 1
+    Tspan = get(timer_obj,'InstantPeriod');
+    rate = (TempV-lastTemp)/Tspan;
+else
+    rate = 0;
+end
 
 if TempV > maxTemp || rate > maxRate   % check if Temp above allowed
     % Yes - shut down the system
-    pwr_obj = getappdata(0,'pwr_obj');
-    outputHP(0,pwr_obj);    % shutdown DC supplier
-    fg = getappdata(0,'fg');
-    HP8904A(fg,0,0,'sine',2,'off','B'); % shutdown function generator
-    xfr_obj = getappdata(0,'xfr_obj');
-    outputXFR(0,xfr_obj);   % sutdown power supply to heater resistor
+    try
+        pwr_obj = getappdata(0,'pwr_obj');
+        outputHP(0,pwr_obj);    % shutdown DC supplier
+        fg = getappdata(0,'fg');
+        HP8904A(fg,0,0,'sine',2,'off','B'); % shutdown function generator
+        xfr_obj = getappdata(0,'xfr_obj');
+        outputXFR(0,xfr_obj);   % sutdown power supply to heater resistor
+    catch
+    end
     set(handles.txtNowTemp,'string',[Temp,'K !!!']);
     setappdata(0,'shutdownFlag',1);
 elseif shutdownFlag && (abs(TempV - spTemp) < intTemp)
