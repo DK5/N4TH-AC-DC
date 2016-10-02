@@ -58,7 +58,7 @@ handles.output = hObject;
 % path('C:\Users\Measurements PC\Dropbox\HTS Lab\Measurment PC\MATLAB\N4TH-AC-DC')
 
 % default answers
-defaultanswer = {'Ni-MgB2','round','1_3mm','Vtap 50mm','v1','1','0.05*(0.0013/2)^2*pi'};
+defaultanswer = {'Ni-MgB2';'round';'1_3mm';'Vtap 50mm';'v1';'1';'0.05*(0.0013/2)^2*pi'};
 setappdata(0,'defAns',defaultanswer);
 defAnsMeas = {'10','50','60','1','40','1'};
 setappdata(0,'defAnsMeas',defAnsMeas);
@@ -66,7 +66,7 @@ setappdata(0,'intTemp',str2double(defAnsMeas{4}));
 
 tempStr = '15K'; run = defaultanswer;
 run{end} = eval(run{end}); % calculate volume
-run = [run(1:4)';{tempStr};run(5:end)'];
+run = [run(1:4);{tempStr};run(5:end)];
 runTitle = strjoin(run(1:6)');
 setappdata(0,'runTitle',runTitle);
 runStr = {runTitle;'DC = 0A'; 'AC = 0A  | f = 0Hz'};
@@ -232,8 +232,7 @@ AClist = str2num(cell2mat(strsplit(acStr)));
 dcStr = get(handles.edtDC,'string');
 DClist = str2num(cell2mat(strsplit(dcStr)));
 
-runStr = get(handles.txtRunTitle,'string');
-runTitleOrg = runStr{1};
+runTitle = getappdata(0,'runTitle');
 config = getappdata(0,'defAns');
 averaging = str2double(config{6});
 eval(['volume = ' config{7} ';']);
@@ -248,6 +247,22 @@ N4TH = getappdata(0,'N4TH');
 volt_obj = getappdata(0,'volt_obj');
 Isrc = getappdata(0,'Isrc');
 
+spTemp = getappdata(0,'TempSet');
+tempStr = ['T' num2str(spTemp) 'K'];
+
+try
+    % try to load previously written file
+    load(['C:\Users\Measurements PC\Dropbox\HTS Lab\Measurment PC\MATLAB\Data\' runTitle '.mat']);
+    % check if there is already temperature measurment
+    tf = isfield(data,tempStr);
+    if tf
+        vind = find(runTitle=='v','last');
+        runTitle(vind+1:end) = num2str(str2double(runTitle(vind+1:end))+1);
+    end
+catch
+    data.volume = volume;
+end
+
 outputHP(0,pwr_obj);      % turn off power supply
 supVoltage(5,pwr_obj);  % supply 5V (DC)
 
@@ -255,7 +270,6 @@ for iDC = DClist
     HP8904A( fg, 0, 440, 'sine', 2, 'on', 'B'); % turn off function generator
     dcI = setDC(iDC,Ilimit ,pwr_obj,N4TH);      % supply DC current
     DCstr = ['DC',num2str(round(dcI)),'A'];
-    runTitle = [runTitleOrg DCstr];     % run title - with DC current
     [outAC,amp] = setAC(AClist(end),frequency(end),fg,N4TH);   % set AC current
     HP8904A( fg, 0, 440, 'sine', 2, 'on', 'B') % turn off function generator
     while ~amp     % wasn't able to supply current
@@ -288,21 +302,22 @@ for iDC = DClist
                     % measurement
                     dcI = setDC(iDC,Ilimit,pwr_obj,N4TH);	% set DC current
                     DCstr = ['DC',num2str(round(dcI)),'A'];
-                    [outAC,amp] = setAC(iAC,f,fg,N4TH);   % set AC current
+                    [outAC,amp] = setAC(iAC,f,fg,N4TH);     % set AC current
                 end
                 runStr{2} = ['DC = ',num2str(iDC),'A'];
                 runStr{3} = ['AC = ',num2str(iAC),'A  |  F = ',num2str(f),'Hz'];
                 set(handles.txtRunTitle,'string',runStr);
                 tempdata = N4TH_1P_GUI(av,round(averaging),N4TH,handles);  % measure 1 point
                 amplitude = ['AC',num2str(100*(round(10*outAC))),'mA'];    % field title
-                data.(DCstr).(amplitude).(freq).average = tempdata;
+                data.(tempStr).(DCstr).(amplitude).(freq).average = tempdata;
                 TempStr = get(handles.txtNowTemp,'string');
-                data.(DCstr).(amplitude).(freq).temp = str2num(TempStr(end-1));
+                Kind = find(TempStr == 'K');
+                data.(tempStr).(DCstr).(amplitude).(freq).temp = str2double(TempStr(1:(Kind-1)));
                 freqplot(end+1) = f ; lossPlot(end+1) = tempdata(1,3);
                 cla(handles.axsPlot);
                 plot(handles.axsPlot,freqplot,lossPlot,'-o'); hold off;
                 xlabel(handles.axsPlot,'Frequency [Hz]'); ylabel(handles.axsPlot,'Loss [W]');
-                fprintf ('current %0.1fA | Frequency %iHz | Amplitude %0.0fmV | Power %0.3fuW\n',iAC,f,1000*amp,1E6*data.(DCstr).(amplitude).(freq).average(1,3))
+                fprintf ('current %0.1fA | Frequency %iHz | Amplitude %0.0fmV | Power %0.3fuW\n',iAC,f,1000*amp,1E6*data.(tempStr).(DCstr).(amplitude).(freq).average(1,3))
                 if abs(outAC-iAC)>0.1;
                     fprintf ('Warning! current is %i instead of %i\n',outAC,iAC); 
                 end
@@ -324,19 +339,20 @@ for iDC = DClist
     
 %     ttime = toc;
 %     clc; fprintf ('Total elapsed time %0.1f minutes \n',ttime/60)
-    data.(DCstr).iAC = sort(AClist);            % sort AC currents
-    data.(DCstr).frequency = sort(frequency);   % sort AC frequencies
+    data.(tempStr).(DCstr).iAC = sort(AClist);            % sort AC currents
+    data.(tempStr).(DCstr).frequency = sort(frequency);   % sort AC frequencies
     save(['C:\Users\Measurements PC\Dropbox\HTS Lab\Measurment PC\MATLAB\Data\' runTitle '_RAW'],'data');
-    data.(DCstr).loss = LossCalculation(data.(DCstr));      % calculate loss
-    data.(DCstr).lossH3 = LossCalculationH3(data.(DCstr));  % 
-    for i = 1:numel(data.(DCstr).frequency)
-        data.(DCstr).lossPVPC(:,i) = data.(DCstr).loss(:,i)./(data.(DCstr).frequency(i)*volume);
+    data.(tempStr).(DCstr).loss = LossCalculation(data.(tempStr).(DCstr));      % calculate loss
+    data.(tempStr).(DCstr).lossH3 = LossCalculationH3(data.(tempStr).(DCstr));  % 
+    for i = 1:numel(data.(tempStr).(DCstr).frequency)
+        data.(tempStr).(DCstr).lossPVPC(:,i) = data.(tempStr).(DCstr).loss(:,i)./(data.(tempStr).(DCstr).frequency(i)*volume);
+        data.(tempStr).(DCstr).lossPC(:,i) = data.(tempStr).(DCstr).loss(:,i)./(data.(tempStr).(DCstr).frequency(i));
     end
-    data.(DCstr).runtitle = runTitle;   
+    data.(tempStr).(DCstr).runtitle = runTitle;   
     save(['C:\Users\Measurements PC\Dropbox\HTS Lab\Measurment PC\MATLAB\Data\' runTitle],'data');
     % Plot and figure save
-    lossplot_GUI(data.(DCstr),handles);
-    h = lossplot(data.(DCstr));
+    lossplot_GUI(data.(tempStr).(DCstr),handles);
+    h = lossplot(data.(tempStr).(DCstr));
     hgsave(h,['C:\Users\Measurements PC\Dropbox\HTS Lab\Measurment PC\MATLAB\Figures\' runTitle])
     close(h);
 end
@@ -347,7 +363,11 @@ function edtTemp_Callback(hObject, eventdata, handles)
 % hObject    handle to edtTemp (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-
+currChar = get(handles.N4TH_GUI,'CurrentCharacter');
+if isequal(currChar,char(13)) %char(13) == enter key
+   % call the pushbutton callback
+   btnSetTemp_Callback(handles.btnMaxTemp, eventdata, handles);
+end
 % Hints: get(hObject,'String') returns contents of edtTemp as text
 %        str2double(get(hObject,'String')) returns contents of edtTemp as a double
 
@@ -398,7 +418,7 @@ amplitude = ['AC',num2str(100*(round(10*outAC))),'mA'];    % field title
 config = getappdata(0,'defAns');
 eval(['volume = ' config{7}]);
 DCstr = ['DC',num2str(round(dcI)),'A'];
-data.(DCstr).(amplitude).(['F',pcell{1},'Hz']) = N4TH_1P_GUI(av,averaging,N4TH,handles);
+data.(tempStr).(DCstr).(amplitude).(['F',pcell{1},'Hz']) = N4TH_1P_GUI(av,averaging,N4TH,handles);
 choice = menu('Save data?','Yes','No');
 if choice == 1
     save([runTitle,DCstr,'_1Point'],'data') % save data
@@ -420,6 +440,10 @@ if isempty(run)
     return;
 end
 setappdata(0,'defAns',run);
+setRunTitle(handles);
+
+function setRunTitle(handles)
+run = getappdata(0,'defAns');
 tempStr = [get(handles.edtTemp,'string'),'K'];
 run{end} = eval(run{end}); % calculate volume
 run = [run(1:4);{tempStr};run(5)];
@@ -429,6 +453,10 @@ setappdata(0,'run',run);
 runStr = get(handles.txtRunTitle,'string');
 runStr{1} = runTitle;
 set(handles.txtRunTitle,'string',runStr);
+
+run = [run(1:4);run(end)];
+runTitle = strjoin(run');
+setappdata(0,'runTitle',runTitle);
 
 
 function [average] = N4TH_1P_GUI(av,averaging,N4TH,handles)
@@ -565,13 +593,14 @@ function btnSetTemp_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 spTemp = str2double(get(handles.edtTemp,'string'));
-MeasConf = getappdata(0,'defAnsMeas');
-Rth = str2double(MeasConf{2});
-Plimit = str2double(MeasConf{3});
-interval = getappdata(0,'intTemp');
-setappdata(0,'TempSet',spTemp);
-volt_obj = getappdata(0,'volt_obj');
-xfr_obj = getappdata(0,'xfr_obj');
+setRunTitle(handles);
+% MeasConf = getappdata(0,'defAnsMeas');
+% Rth = str2double(MeasConf{2});
+% Plimit = str2double(MeasConf{3});
+% interval = getappdata(0,'intTemp');
+% setappdata(0,'TempSet',spTemp);
+% volt_obj = getappdata(0,'volt_obj');
+% xfr_obj = getappdata(0,'xfr_obj');
 % setTemp(spTemp,interval,Rth,Plimit,volt_obj,xfr_obj);
 
 function Fig2 = lossplot_GUI(data,handles)
