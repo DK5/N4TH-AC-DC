@@ -22,7 +22,7 @@ function varargout = plotGUI(varargin)
 
 % Edit the above text to modify the response to help plotGUI
 
-% Last Modified by GUIDE v2.5 05-Oct-2016 15:58:57
+% Last Modified by GUIDE v2.5 29-Sep-2016 10:19:41
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -59,7 +59,6 @@ sind = sinds(1);
 dataPath = [pathStr(1:sind) 'Data\'];
 setappdata(0,'dataPath',dataPath);
 
-set(handles.plotGUIfig,'CurrentAxes',handles.axsPlot);
 % Choose default command line output for plotGUI
 handles.output = hObject;
 
@@ -67,7 +66,7 @@ handles.output = hObject;
 guidata(hObject, handles);
 
 % UIWAIT makes plotGUI wait for user response (see UIRESUME)
-% uiwait(handles.plotGUIfig);
+% uiwait(handles.figure1);
 
 % --- Outputs from this function are returned to the command line.
 function varargout = plotGUI_OutputFcn(hObject, eventdata, handles) 
@@ -308,47 +307,14 @@ switch choice
     case 1  % Loss vs.  F (2D)
         acind = get(handles.mnuAC,'value');
         ACstr = get(handles.mnuAC,'string'); ACstr = ACstr{acind};
-        plot(handles.axsPlot,F,Loss(acind,:)*1000);
-        xlabel(handles.axsPlot,'frequency [Hz]','Fontsize',13);ylabel(handles.axsPlot,'Losses [mW]','Fontsize',13);
+        plot(handles.axsPlot,F,Loss(acind,:));
     case 2  % Loss vs.  AC (2D)
         ffind = get(handles.mnuAC,'value');
         Fstr = get(handles.mnuAC,'string'); Fstr = Fstr{ffind};
         AC = pdata.iAC;
-        plot(handles.axsPlot,AC,Loss(:,ffind)*1000);
-        xlabel(handles.axsPlot,'AC Current [A] rms','Fontsize',13);ylabel(handles.axsPlot,'Losses [mW]','Fontsize',13);
+        plot(handles.axsPlot,AC,Loss(:,ffind));
     case 3
-        [X,Y] = meshgrid(sort(pdata.iAC),sort(pdata.frequency));
-        surf(handles.axsPlot,X,Y,1000.*Loss','FaceColor','interp','FaceLighting','gouraud');
-%         title(pdata.runtitle, 'Interpreter', 'none','Fontsize',14); 
-        try
-            axis(handles.axsPlot,[min(pdata.iAC) max(pdata.iAC) min(pdata.frequency) max(pdata.frequency) 1100*min(min(Loss,[],1)) 1100*max(max(Loss,[],1))]);
-        catch
-        end
-        % axes('Fontsize',12);
-        xlabel(handles.axsPlot,'AC Current [A] rms','Fontsize',13);ylabel(handles.axsPlot,'frequency [Hz]','Fontsize',13);
-        zlabel(handles.axsPlot,'Losses [mW]','Fontsize',13);
-        set(gca,'FontSize',13)
+        
     case 4
         
 end
-
-
-% --- Executes on button press in btnSave.
-function btnSave_Callback(hObject, eventdata, handles)
-% hObject    handle to btnSave (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-
-% --- Executes on button press in btnOpen.
-function btnOpen_Callback(hObject, eventdata, handles)
-% hObject    handle to btnOpen (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-NewFig = figure;
-ax_new = copyobj(handles.axsPlot,NewFig);
-% hgsave(NewFig, 'myFigure.fig');
-set(NewFig,'units','normalized');
-set(NewFig,'position',[0.25 0.25 0.5 0.5]);
-% pos = get(NewFig,'Innerposition');
-set(ax_new,'units','normalized','Position',[0.1 0.15 0.85 0.8]);
