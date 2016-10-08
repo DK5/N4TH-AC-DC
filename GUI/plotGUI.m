@@ -22,7 +22,7 @@ function varargout = plotGUI(varargin)
 
 % Edit the above text to modify the response to help plotGUI
 
-% Last Modified by GUIDE v2.5 05-Oct-2016 15:58:57
+% Last Modified by GUIDE v2.5 08-Oct-2016 17:52:30
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -59,7 +59,7 @@ sind = sinds(1);
 dataPath = [pathStr(1:sind) 'Data\'];
 setappdata(0,'dataPath',dataPath);
 
-set(handles.plotGUIfig,'CurrentAxes',handles.axsPlot);
+% set(handles.plotGUIfig,'CurrentAxes',handles.axsPlot);
 % Choose default command line output for plotGUI
 handles.output = hObject;
 
