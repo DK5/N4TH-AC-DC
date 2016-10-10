@@ -20,6 +20,8 @@ else
 end
 fprintf(N4TH,['NOISEF,PHASE1,ON,' num2str(noise)]); % set low pass filter
 fprintf(N4TH,'SPEED,WINDOW,0.5');
+fprintf(N4TH,'FQLOCK,ON');              % lock on frequency - on
+fprintf(N4TH,['FREQUE,' num2str(f)]);   % lock on frequency
 pause(0.6);
 
 % read AC current

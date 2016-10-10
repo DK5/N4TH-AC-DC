@@ -549,7 +549,16 @@ volt_obj = getappdata(0,'volt_obj');% get voltmeter object
 Isrc = getappdata(0,'Isrc');        % get sourced current in thermometer
 shutdownFlag = getappdata(0,'shutdownFlag');
 intTemp = getappdata(0,'intTemp');
-TempV = getTemp(volt_obj,Isrc*1e-6);% calculate Temperature 
+TempV = NaN;
+while(isnan(TempV))
+    try
+        TempV = getTemp(volt_obj,Isrc*1e-6);% calculate Temperature 
+    catch
+        TempV = NaN;
+        fclose(volt_obj);
+        fopen(volt_obj);
+    end
+end
 % TempV = 100*rand(1);
 spTemp = getappdata(0,'TempSet');
 Temp = sprintf('%0.2f',TempV);      % format as text
