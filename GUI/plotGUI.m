@@ -338,6 +338,22 @@ function btnSave_Callback(hObject, eventdata, handles)
 % hObject    handle to btnSave (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+FileName = '';% get(handles.file_name_edit,'String');  % get the desired filename
+[FileName,dir] = uiputfile('*.png','Save Script',FileName);
+if ~dir
+%     errordlg('No directory was chosen');
+    return;
+end
+FileName = [dir,FileName(1:end-4)];
+NewFig = figure;
+ax_new = copyobj(handles.axsPlot,NewFig);
+% hgsave(NewFig, 'myFigure.fig');
+% set(NewFig,'units','inches');
+% set(NewFig,'position',[0.25 0.25 0.5 0.5]);
+% pos = get(NewFig,'Innerposition');
+set(ax_new,'units','normalized','Position',[0.1 0.15 0.85 0.8]);
+print(NewFig,FileName,'-r300','-dpng');
+close(NewFig);
 
 
 % --- Executes on button press in btnOpen.
@@ -348,7 +364,7 @@ function btnOpen_Callback(hObject, eventdata, handles)
 NewFig = figure;
 ax_new = copyobj(handles.axsPlot,NewFig);
 % hgsave(NewFig, 'myFigure.fig');
-set(NewFig,'units','normalized');
-set(NewFig,'position',[0.25 0.25 0.5 0.5]);
+% set(NewFig,'units','normalized');
+% set(NewFig,'position',[0.25 0.25 0.5 0.5]);
 % pos = get(NewFig,'Innerposition');
 set(ax_new,'units','normalized','Position',[0.1 0.15 0.85 0.8]);
