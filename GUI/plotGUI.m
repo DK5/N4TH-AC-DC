@@ -22,7 +22,7 @@ function varargout = plotGUI(varargin)
 
 % Edit the above text to modify the response to help plotGUI
 
-% Last Modified by GUIDE v2.5 10-Oct-2016 11:33:57
+% Last Modified by GUIDE v2.5 26-Oct-2016 13:22:44
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -86,46 +86,98 @@ function btnLoad_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 defPath = getappdata(0,'dataPath');
-[FileName,FilePath] = uigetfile([defPath '\*.mat'],'Select the MATLAB file containing Commands');
-if FileName==0
-    errordlg('Error Reading File','Error 0x002');
+[FileName,FilePath] = uigetfile([defPath '\*.mat'],'Select the file containing the data. 2 files for comparision.','MultiSelect','on');
+
+if ~iscell(FileName)
+    if FileName==0
+        errordlg('Error Reading File','Error 0x002');
+        return
+    end
+    load([FilePath,FileName]);  % get listbox contents
+    cla(handles.axsPlot,'reset');
+    set(handles.txtVolume,'string',['Volume = ' num2str(data.volume*10e9) '  mm^3']);
+    % set(handles.txtTitle,'string',FileName);
+    title(handles.axsPlot,FileName,'Interpreter','none');
+    TempStr = getNamesByHead(data,'T');
+    set(handles.mnuTemp,'string',TempStr); set(handles.mnuTemp,'value',1);
+    DCstr = getNamesByHead(data.(['T' TempStr{1}]),'DC');
+    set(handles.mnuDC,'string',DCstr); set(handles.mnuDC,'value',1);
+    ACstr = getNamesByHead(data.(['T' TempStr{1}]).(['DC' DCstr{1}]),'AC');
+    set(handles.mnuAC,'string',ACstr); set(handles.mnuAC,'value',1);
+    Fstr = getNamesByHead(data.(['T' TempStr{1}]).(['DC' DCstr{1}]).(['AC' ACstr{1}]),'F');
+    set(handles.mnuFreq,'string',Fstr); set(handles.mnuFreq,'value',1);
+    setappdata(0,'data',data);
+    setappdata(0,'runTitle',data.runtitle)
+
+    cLoss = cell(length(TempStr),1);
+    cLossH3 = cLoss; cLossPC = cLoss; cLossH3PC = cLoss;
+
+    for tind = 1:length(TempStr)
+        DCstr = getNamesByHead(data.(['T' TempStr{tind}]),'DC');
+        mloss = zeros(length(ACstr),length(Fstr),length(DCstr));
+        mlossH3 = zeros(length(ACstr),length(Fstr),length(DCstr));
+        for dcind = 1:length(DCstr)
+            mloss(:,:,dcind) = data.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]).loss;
+            mlossH3(:,:,dcind) = data.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]).lossH3;
+        end
+        cLoss{tind} = mloss;
+        cLossH3{tind} = mlossH3;
+        F = data.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]).frequency;
+        cLossPC{tind} = mloss./repmat(F,size(mloss,1),1,size(mloss,3));
+        cLossH3PC{tind} = mlossH3./repmat(F,size(mlossH3,1),1,size(mlossH3,3));
+    end
+elseif length(FileName)==2
+    cla(handles.axsPlot,'reset');
+    load([FilePath,FileName{1}]);  % get listbox contents
+    data2 = data;
+    load([FilePath,FileName{2}]);  % get listbox contents
+    
+    if data.volume~=data2.volume
+        errordlg('Volume doesn''t match','Error 0x004');
+        return
+    end
+    
+    set(handles.txtVolume,'string',['Volume = ' num2str(data.volume*10e9) '  mm^3']);
+    % set(handles.txtTitle,'string',FileName);
+    title(handles.axsPlot,[data.runtitle,' VS. ',data2.runtitle],'Interpreter','none');
+    TempStr = getNamesByHead(data,'T');
+    set(handles.mnuTemp,'string',TempStr); set(handles.mnuTemp,'value',1);
+    DCstr = getNamesByHead(data.(['T' TempStr{1}]),'DC');
+    set(handles.mnuDC,'string',DCstr); set(handles.mnuDC,'value',1);
+    ACstr = getNamesByHead(data.(['T' TempStr{1}]).(['DC' DCstr{1}]),'AC');
+    set(handles.mnuAC,'string',ACstr); set(handles.mnuAC,'value',1);
+    Fstr = getNamesByHead(data.(['T' TempStr{1}]).(['DC' DCstr{1}]).(['AC' ACstr{1}]),'F');
+    set(handles.mnuFreq,'string',Fstr); set(handles.mnuFreq,'value',1);
+    setappdata(0,'data',data);
+    
+    setappdata(0,'runTitle',[data.runtitle,' vs. ',data2.runtitle])
+    
+    cLoss = cell(length(TempStr),1);
+    cLossH3 = cLoss; cLossPC = cLoss; cLossH3PC = cLoss;
+    
+    for tind = 1:length(TempStr)
+        DCstr = getNamesByHead(data.(['T' TempStr{tind}]),'DC');
+        mloss = zeros(length(ACstr),length(Fstr),length(DCstr));
+        mlossH3 = zeros(length(ACstr),length(Fstr),length(DCstr));
+        for dcind = 1:length(DCstr)
+            mloss(:,:,dcind) = data.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]).loss - data2.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]).loss;
+            mlossH3(:,:,dcind) = data.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]).lossH3 - data2.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]).lossH3;
+        end
+        cLoss{tind} = mloss;
+        cLossH3{tind} = mlossH3;
+        F = data.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]).frequency;
+        cLossPC{tind} = mloss./repmat(F,size(mloss,1),1,size(mloss,3));
+        cLossH3PC{tind} = mlossH3./repmat(F,size(mlossH3,1),1,size(mlossH3,3));
+    end
+    
+else
+    errordlg('Can''t choose more than 2 files at once','Error 0x003');
     return
 end
-load([FilePath,FileName]);  % get listbox contents
-cla(handles.axsPlot,'reset');
-set(handles.txtVolume,'string',['Volume = ' num2str(data.volume*10e9) '  mm^3']);
-% set(handles.txtTitle,'string',FileName);
-title(handles.axsPlot,FileName,'Interpreter','none');
-TempStr = getNamesByHead(data,'T');
-set(handles.mnuTemp,'string',TempStr); set(handles.mnuTemp,'value',1);
-DCstr = getNamesByHead(data.(['T' TempStr{1}]),'DC');
-set(handles.mnuDC,'string',DCstr); set(handles.mnuDC,'value',1);
-ACstr = getNamesByHead(data.(['T' TempStr{1}]).(['DC' DCstr{1}]),'AC');
-set(handles.mnuAC,'string',ACstr); set(handles.mnuAC,'value',1);
-Fstr = getNamesByHead(data.(['T' TempStr{1}]).(['DC' DCstr{1}]).(['AC' ACstr{1}]),'F');
-set(handles.mnuFreq,'string',Fstr); set(handles.mnuFreq,'value',1);
-setappdata(0,'data',data);
 
-
-cLoss = cell(length(TempStr),1);
-cLossH3 = cLoss; cLossPC = cLoss; cLossH3PC = cLoss;
-
-for tind = 1:length(TempStr)
-    DCstr = getNamesByHead(data.(['T' TempStr{tind}]),'DC');
-    mloss = zeros(length(ACstr),length(Fstr),length(DCstr));
-    mlossH3 = zeros(length(ACstr),length(Fstr),length(DCstr));
-    for dcind = 1:length(DCstr)
-        mloss(:,:,dcind) = data.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]).loss;
-        mlossH3(:,:,dcind) = data.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]).lossH3;
-    end
-    cLoss{tind} = mloss;
-    cLossH3{tind} = mlossH3;
-    F = data.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]).frequency;
-    cLossPC{tind} = mloss./repmat(F,size(mloss,1),1,size(mloss,3));
-    cLossH3PC{tind} = mlossH3./repmat(F,size(mlossH3,1),1,size(mlossH3,3));
-end
 setappdata(0,'cLoss',cLoss); setappdata(0,'cLossH3',cLossH3);
 setappdata(0,'cLossPC',cLossPC); setappdata(0,'cLossH3PC',cLossH3PC);
+
 
 
 % --- Executes on selection change in mnuPlot.
@@ -306,7 +358,7 @@ function btnPlot_Callback(hObject, eventdata, handles)
 lossChoice = get(handles.mnuPlot,'value');
 TempStr = get(handles.mnuTemp,'string');
 data = getappdata(0,'data');
-runTitle = data.runtitle;
+runTitle = getappdata(0,'runTitle');
 
 pc = get(handles.chkPC,'value');
 pv = get(handles.chkPV,'value');
