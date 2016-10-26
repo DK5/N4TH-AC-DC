@@ -160,8 +160,13 @@ elseif length(FileName)==2
         mloss = zeros(length(ACstr),length(Fstr),length(DCstr));
         mlossH3 = zeros(length(ACstr),length(Fstr),length(DCstr));
         for dcind = 1:length(DCstr)
-            mloss(:,:,dcind) = data.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]).loss - data2.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]).loss;
-            mlossH3(:,:,dcind) = data.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]).lossH3 - data2.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]).lossH3;
+            try
+                mloss(:,:,dcind) = data.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]).loss - data2.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]).loss;
+                mlossH3(:,:,dcind) = data.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]).lossH3 - data2.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]).lossH3;
+            catch
+                errordlg('AC & F values must agree','Error 0x005');
+                return
+            end
         end
         cLoss{tind} = mloss;
         cLossH3{tind} = mlossH3;
@@ -444,11 +449,6 @@ switch yVar(yind)*xVar(xind)
         mLoss = Loss{tind}; mLoss = mLoss(:,:,dcind);
         [X,Y] = meshgrid(sort(pdata.iAC),sort(pdata.frequency));
         surf(handles.axsPlot,X,Y,1000.*mLoss','FaceColor','interp','FaceLighting','gouraud');
-        try
-            axis(handles.axsPlot,[min(pdata.iAC) max(pdata.iAC) min(pdata.frequency) max(pdata.frequency) 900*min(min(mLoss,[],1)) 1100*max(max(mLoss,[],1))]);
-        catch
-            disp('error setting axes');
-        end
         xlabel(handles.axsPlot,'AC Current RMS [A]');ylabel(handles.axsPlot,'frequency [Hz]');
         zlabel(handles.axsPlot,'Losses [mW]');
         title({[LossTitle, ' vs. AC & F ,',' T = ',TempStr,' , DC = ',DCstr];runTitle},...
@@ -463,11 +463,6 @@ switch yVar(yind)*xVar(xind)
         dcVals = str2num(dcVals);       %#ok<ST2NM> % build number array
         [X,Y] = meshgrid(dcVals,sort(pdata.frequency));
         surf(handles.axsPlot,X,Y,1000.*mLoss,'FaceColor','interp','FaceLighting','gouraud');
-        try
-            axis(handles.axsPlot,[min(dcVals) max(dcVals) min(pdata.frequency) max(pdata.frequency) 900*min(min(mLoss,[],1)) 1100*max(max(mLoss,[],1))]);
-        catch
-            disp('error setting axes');
-        end
         xlabel(handles.axsPlot,'DC Current [A]');ylabel(handles.axsPlot,'frequency [Hz]');
         zlabel(handles.axsPlot,'Losses [mW]');
         title({[LossTitle, ' vs. DC & F ,',' T = ',TempStr,' , AC = ',ACstr];runTitle},...
@@ -487,11 +482,6 @@ switch yVar(yind)*xVar(xind)
         end
         % axes('Fontsize',12);
         surf(handles.axsPlot,X,Y,1000.*lossT,'FaceColor','interp','FaceLighting','gouraud');
-        try
-            axis(handles.axsPlot,[min(fVals) max(fVals) min(tVals) max(tVals) 900*min(min(lossT,[],1)) 1100*max(max(lossT,[],1))]);
-        catch
-            disp('error setting axes');
-        end
         xlabel(handles.axsPlot,'Frequency [Hz]');ylabel(handles.axsPlot,'Temperature [K]');
         zlabel(handles.axsPlot,'Losses [mW]');
         title({[LossTitle, ' vs. F & T ,',' DC = ',DCstr,' , AC = ',ACstr];runTitle},...
@@ -506,11 +496,6 @@ switch yVar(yind)*xVar(xind)
         dcVals = str2num(dcVals);       %#ok<ST2NM> % build number array
         [X,Y] = meshgrid(dcVals,sort(pdata.iAC));
         surf(handles.axsPlot,X,Y,1000.*mLoss,'FaceColor','interp','FaceLighting','gouraud');
-        try
-            axis(handles.axsPlot,[min(dcVals) max(dcVals) min(pdata.iAC) max(pdata.iAC) 900*min(min(mLoss,[],1)) 1100*max(max(mLoss,[],1))]);
-        catch
-            disp('error setting axes');
-        end
         xlabel(handles.axsPlot,'DC Current [A]');ylabel(handles.axsPlot,'AC current RMS [A]');
         zlabel(handles.axsPlot,'Losses [mW]');
         title({[LossTitle, ' vs. DC & AC ,',' T = ',TempStr,' , F = ',Fstr];runTitle},...
@@ -530,11 +515,6 @@ switch yVar(yind)*xVar(xind)
         end
         % axes('Fontsize',12);
         surf(handles.axsPlot,X,Y,1000.*lossT,'FaceColor','interp','FaceLighting','gouraud');
-        try
-            axis(handles.axsPlot,[min(acVals) max(acVals) min(tVals) max(tVals) 900*min(min(lossT,[],1)) 1100*max(max(lossT,[],1))]);
-        catch
-            disp('error setting axes');
-        end
         xlabel(handles.axsPlot,'AC Current RMS [A]');ylabel(handles.axsPlot,'Temperature [K]');
         zlabel(handles.axsPlot,'Losses [mW]');
         title({[LossTitle, ' vs. AC & T ,',' DC = ',DCstr,' , F = ',Fstr];runTitle},...
@@ -557,18 +537,13 @@ switch yVar(yind)*xVar(xind)
         end
         % axes('Fontsize',12);
         surf(handles.axsPlot,X,Y,1000.*lossT,'FaceColor','interp','FaceLighting','gouraud');
-        try
-            axis(handles.axsPlot,[min(dcVals) max(dcVals) min(tVals) max(tVals) 900*min(min(lossT,[],1)) 1100*max(max(lossT,[],1))]);
-        catch
-            disp('error setting axes');
-        end
         xlabel(handles.axsPlot,'DC Current [A]');ylabel(handles.axsPlot,'Temperature [K]');
         zlabel(handles.axsPlot,'Losses [mW]');
         title({[LossTitle, ' vs. DC & T ,',' AC = ',ACstr,' , F = ',Fstr];runTitle},...
             'interpreter','none');
         
     otherwise
-        yVar(yind)*xVar(xind)
+        yVar(yind)*xVar(xind);
         error('Not a valid choice');
 end
 
