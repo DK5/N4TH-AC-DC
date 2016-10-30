@@ -22,7 +22,7 @@ function varargout = plotGUI(varargin)
 
 % Edit the above text to modify the response to help plotGUI
 
-% Last Modified by GUIDE v2.5 26-Oct-2016 13:22:44
+% Last Modified by GUIDE v2.5 30-Oct-2016 12:01:14
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -86,7 +86,8 @@ function btnLoad_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 defPath = getappdata(0,'dataPath');
-[FileName,FilePath] = uigetfile([defPath '\*.mat'],'Select the file containing the data. 2 files for comparision.','MultiSelect','on');
+[FileName,FilePath] = uigetfile([defPath '\*.mat'],'Select the file containing the data. 2 files for comparision.','MultiSelect','off');
+% [FileName,FilePath] = uigetfile([defPath '\*.mat'],'Select the file containing the data. 2 files for comparision.','MultiSelect','on');
 
 if ~iscell(FileName)
     if FileName==0
@@ -95,6 +96,8 @@ if ~iscell(FileName)
     end
     load([FilePath,FileName]);  % get listbox contents
     cla(handles.axsPlot,'reset');
+    set(handles.btnSwap,'visible','off');
+    set(handles.btnSwap,'enable','off');
     set(handles.txtVolume,'string',['Volume = ' num2str(data.volume*10e9) '  mm^3']);
     % set(handles.txtTitle,'string',FileName);
     title(handles.axsPlot,FileName,'Interpreter','none');
@@ -127,7 +130,7 @@ if ~iscell(FileName)
         cLossH3PC{tind} = mlossH3./repmat(F,size(mlossH3,1),1,size(mlossH3,3));
     end
 elseif length(FileName)==2
-    cla(handles.axsPlot,'reset');
+    
     load([FilePath,FileName{1}]);  % get listbox contents
     data2 = data;
     load([FilePath,FileName{2}]);  % get listbox contents
@@ -136,10 +139,8 @@ elseif length(FileName)==2
         errordlg('Volume doesn''t match','Error 0x004');
         return
     end
-    
     set(handles.txtVolume,'string',['Volume = ' num2str(data.volume*10e9) '  mm^3']);
     % set(handles.txtTitle,'string',FileName);
-    title(handles.axsPlot,[data.runtitle,' VS. ',data2.runtitle],'Interpreter','none');
     TempStr = getNamesByHead(data,'T');
     set(handles.mnuTemp,'string',TempStr); set(handles.mnuTemp,'value',1);
     DCstr = getNamesByHead(data.(['T' TempStr{1}]),'DC');
@@ -148,9 +149,6 @@ elseif length(FileName)==2
     set(handles.mnuAC,'string',ACstr); set(handles.mnuAC,'value',1);
     Fstr = getNamesByHead(data.(['T' TempStr{1}]).(['DC' DCstr{1}]).(['AC' ACstr{1}]),'F');
     set(handles.mnuFreq,'string',Fstr); set(handles.mnuFreq,'value',1);
-    setappdata(0,'data',data);
-    
-    setappdata(0,'runTitle',[data.runtitle,' vs. ',data2.runtitle])
     
     cLoss = cell(length(TempStr),1);
     cLossH3 = cLoss; cLossPC = cLoss; cLossH3PC = cLoss;
@@ -174,6 +172,13 @@ elseif length(FileName)==2
         cLossPC{tind} = mloss./repmat(F,size(mloss,1),1,size(mloss,3));
         cLossH3PC{tind} = mlossH3./repmat(F,size(mlossH3,1),1,size(mlossH3,3));
     end
+    
+    cla(handles.axsPlot,'reset');
+    setappdata(0,'data',data);
+    setappdata(0,'runTitle',[data.runtitle,' vs. ',data2.runtitle])
+    title(handles.axsPlot,[data.runtitle,' vs. ',data2.runtitle],'Interpreter','none');
+    set(handles.btnSwap,'visible','on');
+    set(handles.btnSwap,'enable','on');
     
 else
     errordlg('Can''t choose more than 2 files at once','Error 0x003');
@@ -637,3 +642,38 @@ function mnuY_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
+
+
+% --- Executes on button press in btnSwap.
+function btnSwap_Callback(hObject, eventdata, handles)
+% hObject    handle to btnSwap (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+cLoss = getappdata(0,'cLoss'); cLossPC = getappdata(0,'cLossPC');
+cLossH3 = getappdata(0,'cLossH3'); cLossH3PC = getappdata(0,'cLossH3PC');
+runTitle = getappdata(0,'runTitle');
+
+for tind = length(cLoss)
+     cLoss{tind} = -cLoss{tind};
+     cLossPC{tind} = -cLossPC{tind};
+     cLossH3{tind} = -cLossH3{tind};
+     cLossH3PC{tind} = -cLossH3PC{tind};
+end
+
+vsind = strfind(runTitle,' vs. ');
+newRunTitle = [runTitle(vsind+5:end),' vs. ',runTitle(1:vsind)];
+setappdata(0,'runTitle',newRunTitle);
+setappdata(0,'cLoss',cLoss); setappdata(0,'cLossH3',cLossH3);
+setappdata(0,'cLossPC',cLossPC); setappdata(0,'cLossH3PC',cLossH3PC);
+
+
+% --- Executes on button press in chkComp.
+function chkComp_Callback(hObject, eventdata, handles)
+% hObject    handle to chkComp (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+comp = get(hObject,'value');
+if comp
+    uiwait(compGUI);
+end
+% Hint: get(hObject,'Value') returns toggle state of chkComp
