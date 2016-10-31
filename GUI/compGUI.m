@@ -83,10 +83,7 @@ tind = get(hObject,'value');
 data = getappdata(0,'data2');
 DCstr = getNamesByHead(data.(['T' TempStr{tind}]),'DC');
 set(handles.mnuDC,'string',DCstr); set(handles.mnuDC,'value',1);
-ACstr = getNamesByHead(data.(['T' TempStr{tind}]).(['DC' DCstr{1}]),'AC');
-set(handles.mnuAC,'string',ACstr); set(handles.mnuAC,'value',1);
-Fstr = getNamesByHead(data.(['T' TempStr{tind}]).(['DC' DCstr{1}]).(['AC' ACstr{1}]),'F');
-set(handles.mnuFreq,'string',Fstr); set(handles.mnuFreq,'value',1);
+mnuDC_Callback(handles.mnuDC,eventdata,handles);
 
 TempStr = TempStr{tind};
 setappdata(0,'TempStr2',TempStr); setappdata(0,'tind2',tind); 
@@ -119,8 +116,7 @@ DCstr = get(handles.mnuDC,'string');
 dcind = get(handles.mnuDC,'value');
 ACstr = getNamesByHead(data.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]),'AC');
 set(handles.mnuAC,'string',ACstr); set(handles.mnuAC,'value',1);
-Fstr = getNamesByHead(data.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]).(['AC' ACstr{1}]),'F');
-set(handles.mnuFreq,'string',Fstr); set(handles.mnuFreq,'value',1);
+mnuAC_Callback(handles.mnuAC,eventdata,handles);
 
 DCstr = DCstr{dcind};
 setappdata(0,'DCstr2',DCstr); setappdata(0,'dcind2',dcind); 
@@ -155,6 +151,7 @@ ACstr = get(handles.mnuAC,'string');
 acind = get(handles.mnuAC,'value');
 Fstr = getNamesByHead(data.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]).(['AC' ACstr{acind}]),'F');
 set(handles.mnuFreq,'string',Fstr); set(handles.mnuFreq,'value',1);
+mnuFreq_Callback(handles.mnuFreq,eventdata,handles);
 
 ACstr = ACstr{acind};
 setappdata(0,'ACstr2',ACstr); setappdata(0,'acind2',acind); 

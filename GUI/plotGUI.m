@@ -396,6 +396,7 @@ end
 
 comp = get(handles.chkComp,'value');
 if comp
+    runTitle2 = getappdata(0,'runTitle2');
     Loss2 = getappdata(0,[LossStr '2']);
     tind2 = getappdata(0,'tind2');
     TempStr2 = getappdata(0,'TempStr2');
@@ -428,15 +429,14 @@ switch yVar(yind)*xVar(xind)
         if comp
             mLoss2 = Loss2{tind2};
             pLoss = pLoss - mLoss2(acind2,:,dcind2);
-            title({[LossTitle, ' vs. Frequency'];runTitle;...
+            titleStr = {[LossTitle, ' vs. Frequency'];runTitle;...
                 ['T = ',TempStr,' , DC = ',DCstr,' , AC = ',ACstr];...
-                runTitle2;['T = ',TempStr,' , DC = ',DCstr,' , AC = ',ACstr]},...
-            'interpreter','none');
+                ['vs. ',runTitle2,' @ T = ',TempStr2,' , DC = ',DCstr2,' , AC = ',ACstr2]};
         else
-            title({[LossTitle, ' vs. Frequency'];['T = ',TempStr,' , DC = ',DCstr,' , AC = ',ACstr];runTitle},...
-            'interpreter','none');
+            titleStr = {[LossTitle, ' vs. Frequency'];['T = ',TempStr,' , DC = ',DCstr,' , AC = ',ACstr];runTitle};
         end
         plot(handles.axsPlot,F,pLoss*1000);
+        title(titleStr,'interpreter','none');
         xlabel(handles.axsPlot,'frequency [Hz]');ylabel(handles.axsPlot,'Losses [mW]');
         
         
@@ -447,11 +447,15 @@ switch yVar(yind)*xVar(xind)
         if comp
             mLoss2 = Loss2{tind2};
             pLoss = pLoss - mLoss2(:,ffind2,dcind2);
+            titleStr = {[LossTitle, ' vs. AC'];runTitle;...
+                ['T = ',TempStr,' , DC = ',DCstr,' , F = ',Fstr];...
+                ['vs. ',runTitle2,' @ T = ',TempStr2,' , DC = ',DCstr2,' , F = ',Fstr2]};
+        else
+            titleStr = {[LossTitle, ' vs. AC'];['T = ',TempStr,' , DC = ',DCstr,' , F = ',Fstr];runTitle};
         end
         plot(handles.axsPlot,AC,pLoss*1000);
         xlabel(handles.axsPlot,'AC Current [A] rms');ylabel(handles.axsPlot,'Losses [mW]');
-        title({[LossTitle, ' vs. AC , T = ',TempStr,' , DC = ',DCstr,' , F = ',Fstr];runTitle},...
-            'interpreter','none');
+        title(titleStr,'interpreter','none');
         
     case 6  % Loss vs.  DC (2D)
         dcList = get(handles.mnuDC,'string');
@@ -464,11 +468,15 @@ switch yVar(yind)*xVar(xind)
             mLoss2 = Loss2{tind2};
             dcLoss2 = reshape(mLoss2(acind2,ffind2,:),size(mLoss2,3),1,1);
             dcLoss = dcLoss - dcLoss2;
+             titleStr = {[LossTitle, ' vs. DC'];runTitle;...
+                ['T = ',TempStr,' , DC = ',DCstr,' , F = ',Fstr];...
+                ['vs. ',runTitle2,' @ T = ',TempStr2,' , DC = ',DCstr2,' , F = ',Fstr2]};
+        else
+            titleStr = {[LossTitle, ' vs. DC'];['T = ',TempStr,' , AC = ',DCstr,' , F = ',Fstr];runTitle};
         end
         plot(handles.axsPlot,dcVals,dcLoss*1000);
         xlabel(handles.axsPlot,'DC Current [A] rms');ylabel(handles.axsPlot,'Losses [mW]');
-        title({[LossTitle, ' vs. DC , T = ',TempStr,' , AC = ',ACstr,' , F = ',Fstr];runTitle},...
-            'interpreter','none');
+        title(titleStr,'interpreter','none');
         
     case 8  % Loss vs. T (2D)
         tList = get(handles.mnuTemp,'string');
@@ -488,11 +496,15 @@ switch yVar(yind)*xVar(xind)
                 lossT2(tind) = LossAll(acind2,ffind2,dcind2);
             end
             lossT = lossT - lossT2;
+            titleStr = {[LossTitle, ' vs. T & DC'];runTitle;...
+                ['AC = ',DCstr,' , F = ',Fstr];...
+                ['vs. ',runTitle2,' @ AC = ',ACstr2,' , F = ',Fstr2]};
+        else
+            titleStr = {[LossTitle, ' vs. AC'];['T = ',TempStr,' , DC = ',DCstr,' , F = ',Fstr];runTitle};
         end
         plot(handles.axsPlot,tVals,lossT*1000);
         xlabel(handles.axsPlot,'Temperature [K]');ylabel(handles.axsPlot,'Losses [mW]');
-        title({[LossTitle, ' vs. T , DC = ',DCstr,' , AC = ',ACstr,' , F = ',Fstr];runTitle},...
-            'interpreter','none');
+        title(titleStr,'interpreter','none');
         
     case {3,12}  % Loss vs. F & AC (3D)
         pdata = data.(['T' TempStr]).(['DC' DCstr]);
@@ -502,12 +514,16 @@ switch yVar(yind)*xVar(xind)
         if comp
             mLoss2 = Loss{tind2}; mLoss2 = mLoss2(:,:,dcind2);
             mLoss = mLoss - mLoss2;
+            titleStr = {[LossTitle, ' vs. F & AC'];runTitle;...
+                ['T = ',TempStr,' , DC = ',DCstr];...
+                ['vs. ',runTitle2,' @ T = ',TempStr2,' , DC = ',DCstr2]};
+        else
+            titleStr = {[LossTitle, ' vs. F & AC'];['T = ',TempStr,' , DC = ',DCstr];runTitle};
         end
         surf(handles.axsPlot,X,Y,1000.*mLoss','FaceColor','interp','FaceLighting','gouraud');
         xlabel(handles.axsPlot,'AC Current RMS [A]');ylabel(handles.axsPlot,'frequency [Hz]');
         zlabel(handles.axsPlot,'Losses [mW]');
-        title({[LossTitle, ' vs. AC & F ,',' T = ',TempStr,' , DC = ',DCstr];runTitle},...
-            'interpreter','none');
+        title(titleStr,'interpreter','none');
 
     case {5,18}  % Loss vs. F & DC (3D)
         pdata = data.(['T' TempStr]).(['DC' DCstr]);
@@ -521,12 +537,16 @@ switch yVar(yind)*xVar(xind)
         if comp
             mLoss2 = Loss{tind2}; mLoss2 = reshape(mLoss2(acind2,:,:),size(mLoss2,2),size(mLoss2,3),1);
             mLoss = mLoss - mLoss2;
+            titleStr = {[LossTitle, ' vs. DC & F'];runTitle;...
+                ['T = ',TempStr,' , AC = ',ACstr];...
+                ['vs. ',runTitle2,' @ T = ',TempStr2,' , AC = ',ACstr2]};
+        else
+            titleStr = {[LossTitle, ' vs. DC & F'];['T = ',TempStr,' , AC = ',ACstr];runTitle};
         end
         surf(handles.axsPlot,X,Y,1000.*mLoss,'FaceColor','interp','FaceLighting','gouraud');
         xlabel(handles.axsPlot,'DC Current [A]');ylabel(handles.axsPlot,'frequency [Hz]');
         zlabel(handles.axsPlot,'Losses [mW]');
-        title({[LossTitle, ' vs. DC & F ,',' T = ',TempStr,' , AC = ',ACstr];runTitle},...
-            'interpreter','none');
+        title(titleStr,'interpreter','none');
         
     case {7,24}  % Loss vs. F & T (3D)
         tList = get(handles.mnuTemp,'string');
@@ -549,12 +569,16 @@ switch yVar(yind)*xVar(xind)
                 lossT2(tind,:) = LossAll(acind2,:,dcind2);
             end
             lossT = lossT - lossT2;
+            titleStr = {[LossTitle, ' vs. F & T'];runTitle;...
+                [' , DC = ',DCstr,' , AC = ',ACstr];...
+                ['vs. ',runTitle2,' @ DC = ',DCstr2,' , AC = ',ACstr2]};
+        else
+            titleStr = {[LossTitle, ' vs. AC'];['DC = ',DCstr,' , AC = ',ACstr];runTitle};
         end
         surf(handles.axsPlot,X,Y,1000.*lossT,'FaceColor','interp','FaceLighting','gouraud');
         xlabel(handles.axsPlot,'Frequency [Hz]');ylabel(handles.axsPlot,'Temperature [K]');
         zlabel(handles.axsPlot,'Losses [mW]');
-        title({[LossTitle, ' vs. F & T ,',' DC = ',DCstr,' , AC = ',ACstr];runTitle},...
-            'interpreter','none');
+        title(titleStr,'interpreter','none');
         
     case {20,30} % Loss vs. AC & DC (3D)
         pdata = data.(['T' TempStr]).(['DC' DCstr]);
@@ -568,12 +592,16 @@ switch yVar(yind)*xVar(xind)
         if comp
             mLoss2 = Loss2{tind}; mLoss2 = reshape(mLoss2(:,ffind2,:),size(mLoss2,1),size(mLoss2,3),1);
             mLoss = mLoss - mLoss2;
+            titleStr = {[LossTitle, ' vs. DC & AC'];runTitle;...
+                ['T = ',TempStr,' , F = ',Fstr];...
+                ['vs. ',runTitle2,' @ T = ',TempStr2,' , F = ',Fstr2]};
+        else
+            titleStr = {[LossTitle, ' vs. DC & AC'];['T = ',TempStr,' , F = ',Fstr];runTitle};
         end
         surf(handles.axsPlot,X,Y,1000.*mLoss,'FaceColor','interp','FaceLighting','gouraud');
         xlabel(handles.axsPlot,'DC Current [A]');ylabel(handles.axsPlot,'AC current RMS [A]');
         zlabel(handles.axsPlot,'Losses [mW]');
-        title({[LossTitle, ' vs. DC & AC ,',' T = ',TempStr,' , F = ',Fstr];runTitle},...
-            'interpreter','none');
+        title(titleStr,'interpreter','none');
         
     case {28,40} % Loss vs. AC & T (3D)
         tList = get(handles.mnuTemp,'string');
@@ -596,12 +624,16 @@ switch yVar(yind)*xVar(xind)
                 lossT2(tind,:) = LossAll(:,ffind2,dcind2)';
             end
             lossT = lossT - lossT2;
+            titleStr = {[LossTitle, ' vs. AC & T'];runTitle;...
+                [' , DC = ',DCstr,' , F = ',Fstr];...
+                ['vs. ',runTitle2,' @ DC = ',DCstr2,' , F = ',Fstr2]};
+        else
+            titleStr = {[LossTitle, ' vs. AC'];['DC = ',DCstr,' , F = ',Fstr];runTitle};
         end
         surf(handles.axsPlot,X,Y,1000.*lossT,'FaceColor','interp','FaceLighting','gouraud');
         xlabel(handles.axsPlot,'AC Current RMS [A]');ylabel(handles.axsPlot,'Temperature [K]');
         zlabel(handles.axsPlot,'Losses [mW]');
-        title({[LossTitle, ' vs. AC & T ,',' DC = ',DCstr,' , F = ',Fstr];runTitle},...
-            'interpreter','none');
+        title(titleStr,'interpreter','none');
         
     case {42,56} % Loss vs. DC & T (3D)
         tList = get(handles.mnuTemp,'string');
@@ -627,12 +659,16 @@ switch yVar(yind)*xVar(xind)
                 lossT2(tind,:) = reshape(LossAll(acind2,ffind2,:),1,size(LossAll,3),1);
             end
             lossT = lossT - lossT2;
+            titleStr = {[LossTitle, ' vs. DC & T'];runTitle;...
+                ['AC = ',ACstr,' , F = ',Fstr];...
+                ['vs. ',runTitle2,' @ AC = ',ACstr2,' , F = ',Fstr2]};
+        else
+            titleStr = {[LossTitle, ' vs. AC'];['AC = ',ACstr,' , F = ',Fstr];runTitle};
         end
         surf(handles.axsPlot,X,Y,1000.*lossT,'FaceColor','interp','FaceLighting','gouraud');
         xlabel(handles.axsPlot,'DC Current [A]');ylabel(handles.axsPlot,'Temperature [K]');
         zlabel(handles.axsPlot,'Losses [mW]');
-        title({[LossTitle, ' vs. DC & T ,',' AC = ',ACstr,' , F = ',Fstr];runTitle},...
-            'interpreter','none');
+        title(titleStr,'interpreter','none');
         
     otherwise
         yVar(yind)*xVar(xind);
