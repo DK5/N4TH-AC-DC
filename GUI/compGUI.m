@@ -22,7 +22,7 @@ function varargout = compGUI(varargin)
 
 % Edit the above text to modify the response to help compGUI
 
-% Last Modified by GUIDE v2.5 30-Oct-2016 12:14:28
+% Last Modified by GUIDE v2.5 30-Oct-2016 14:33:06
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -78,7 +78,18 @@ function mnuTemp_Callback(hObject, eventdata, handles)
 % hObject    handle to mnuTemp (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+TempStr = get(hObject,'string');
+tind = get(hObject,'value');
+data = getappdata(0,'data2');
+DCstr = getNamesByHead(data.(['T' TempStr{tind}]),'DC');
+set(handles.mnuDC,'string',DCstr); set(handles.mnuDC,'value',1);
+ACstr = getNamesByHead(data.(['T' TempStr{tind}]).(['DC' DCstr{1}]),'AC');
+set(handles.mnuAC,'string',ACstr); set(handles.mnuAC,'value',1);
+Fstr = getNamesByHead(data.(['T' TempStr{tind}]).(['DC' DCstr{1}]).(['AC' ACstr{1}]),'F');
+set(handles.mnuFreq,'string',Fstr); set(handles.mnuFreq,'value',1);
 
+TempStr = TempStr{tind};
+setappdata(0,'TempStr2',TempStr); setappdata(0,'tind2',tind); 
 % Hints: contents = cellstr(get(hObject,'String')) returns mnuTemp contents as cell array
 %        contents{get(hObject,'Value')} returns selected item from mnuTemp
 
@@ -101,7 +112,18 @@ function mnuDC_Callback(hObject, eventdata, handles)
 % hObject    handle to mnuDC (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+TempStr = get(handles.mnuTemp,'string');
+tind = get(handles.mnuTemp,'value');
+data = getappdata(0,'data2');
+DCstr = get(handles.mnuDC,'string');
+dcind = get(handles.mnuDC,'value');
+ACstr = getNamesByHead(data.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]),'AC');
+set(handles.mnuAC,'string',ACstr); set(handles.mnuAC,'value',1);
+Fstr = getNamesByHead(data.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]).(['AC' ACstr{1}]),'F');
+set(handles.mnuFreq,'string',Fstr); set(handles.mnuFreq,'value',1);
 
+DCstr = DCstr{dcind};
+setappdata(0,'DCstr2',DCstr); setappdata(0,'dcind2',dcind); 
 % Hints: contents = cellstr(get(hObject,'String')) returns mnuDC contents as cell array
 %        contents{get(hObject,'Value')} returns selected item from mnuDC
 
@@ -124,7 +146,18 @@ function mnuAC_Callback(hObject, eventdata, handles)
 % hObject    handle to mnuAC (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+TempStr = get(handles.mnuTemp,'string');
+tind = get(handles.mnuTemp,'value');
+data = getappdata(0,'data2');
+DCstr = get(handles.mnuDC,'string');
+dcind = get(handles.mnuDC,'value');
+ACstr = get(handles.mnuAC,'string');
+acind = get(handles.mnuAC,'value');
+Fstr = getNamesByHead(data.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]).(['AC' ACstr{acind}]),'F');
+set(handles.mnuFreq,'string',Fstr); set(handles.mnuFreq,'value',1);
 
+ACstr = ACstr{acind};
+setappdata(0,'ACstr2',ACstr); setappdata(0,'acind2',acind); 
 % Hints: contents = cellstr(get(hObject,'String')) returns mnuAC contents as cell array
 %        contents{get(hObject,'Value')} returns selected item from mnuAC
 
@@ -147,7 +180,9 @@ function mnuFreq_Callback(hObject, eventdata, handles)
 % hObject    handle to mnuFreq (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-
+ffind2 = get(handles.mnuFreq,'value');
+Fstr2 = get(handles.mnuFreq,'string'); Fstr2 = Fstr2{ffind2};
+setappdata(0,'Fstr2',Fstr2); setappdata(0,'ffind2',ffind2); 
 % Hints: contents = cellstr(get(hObject,'String')) returns mnuFreq contents as cell array
 %        contents{get(hObject,'Value')} returns selected item from mnuFreq
 
@@ -179,12 +214,8 @@ if FileName==0
 end
 
 load([FilePath,FileName]);  % get listbox contents
-cla(handles.axsPlot,'reset');
-set(handles.btnSwap,'visible','off');
-set(handles.btnSwap,'enable','off');
-set(handles.txtVolume,'string',['Volume = ' num2str(data.volume*10e9) '  mm^3']);
-% set(handles.txtTitle,'string',FileName);
-title(handles.axsPlot,FileName,'Interpreter','none');
+set(handles.txtRunTitle,'string',FileName);
+
 TempStr = getNamesByHead(data,'T');
 set(handles.mnuTemp,'string',TempStr); set(handles.mnuTemp,'value',1);
 DCstr = getNamesByHead(data.(['T' TempStr{1}]),'DC');
@@ -193,8 +224,13 @@ ACstr = getNamesByHead(data.(['T' TempStr{1}]).(['DC' DCstr{1}]),'AC');
 set(handles.mnuAC,'string',ACstr); set(handles.mnuAC,'value',1);
 Fstr = getNamesByHead(data.(['T' TempStr{1}]).(['DC' DCstr{1}]).(['AC' ACstr{1}]),'F');
 set(handles.mnuFreq,'string',Fstr); set(handles.mnuFreq,'value',1);
-setappdata(0,'data',data);
-setappdata(0,'runTitle',data.runtitle)
+
+setappdata(0,'data2',data);
+setappdata(0,'runTitle2',data.runtitle);
+
+setappdata(0,'tind2',1);
+setappdata(0,'dcind2',1);
+setappdata(0,'acind2',1);
 
 cLoss = cell(length(TempStr),1);
 cLossH3 = cLoss; cLossPC = cLoss; cLossH3PC = cLoss;
@@ -216,3 +252,18 @@ end
 
 setappdata(0,'cLoss2',cLoss); setappdata(0,'cLossH32',cLossH3);
 setappdata(0,'cLossPC2',cLossPC); setappdata(0,'cLossH3PC2',cLossH3PC);
+
+
+function FieldNames = getNamesByHead(dataStruct,Head)
+FieldNames = fieldnames(dataStruct);
+eind = [];
+for ind = 1:length(FieldNames)
+    tstr = FieldNames{ind};
+    if ~strcmp(tstr(1:length(Head)),Head)
+        eind = [eind ind];
+    else
+        tstr(1:length(Head)) = [];
+        FieldNames{ind} = tstr;
+    end
+end
+FieldNames(eind) = [];

@@ -394,6 +394,19 @@ if pv   % draw per volume
     end
 end
 
+comp = get(handles.chkComp,'value');
+if comp
+    Loss2 = getappdata(0,[LossStr '2']);
+    tind2 = getappdata(0,'tind2');
+    TempStr2 = getappdata(0,'TempStr2');
+    dcind2 = getappdata(0,'dcind2');
+    DCstr2 = getappdata(0,'DCstr2');
+    acind2 = getappdata(0,'acind2');
+    ACstr2 = getappdata(0,'ACstr2');
+    ffind2 = getappdata(0,'ffind2');
+    Fstr2 = getappdata(0,'Fstr2');
+end
+
 tind = get(handles.mnuTemp,'value');
 TempStr = TempStr{tind};
 dcind = get(handles.mnuDC,'value');
@@ -410,15 +423,32 @@ yind = get(handles.mnuY,'value');
 switch yVar(yind)*xVar(xind)
     case 1  % Loss vs.  F (2D)
         mLoss = Loss{tind}; F = data.(['T' TempStr]).(['DC' DCstr]).frequency;
-        plot(handles.axsPlot,F,mLoss(acind,:,dcind)*1000);
-        xlabel(handles.axsPlot,'frequency [Hz]');ylabel(handles.axsPlot,'Losses [mW]');
-        title({[LossTitle, ' vs. Frequency , T = ',TempStr,' , DC = ',DCstr,' , AC = ',ACstr];runTitle},...
+        pLoss = mLoss(acind,:,dcind);
+        
+        if comp
+            mLoss2 = Loss2{tind2};
+            pLoss = pLoss - mLoss2(acind2,:,dcind2);
+            title({[LossTitle, ' vs. Frequency'];runTitle;...
+                ['T = ',TempStr,' , DC = ',DCstr,' , AC = ',ACstr];...
+                runTitle2;['T = ',TempStr,' , DC = ',DCstr,' , AC = ',ACstr]},...
             'interpreter','none');
+        else
+            title({[LossTitle, ' vs. Frequency'];['T = ',TempStr,' , DC = ',DCstr,' , AC = ',ACstr];runTitle},...
+            'interpreter','none');
+        end
+        plot(handles.axsPlot,F,pLoss*1000);
+        xlabel(handles.axsPlot,'frequency [Hz]');ylabel(handles.axsPlot,'Losses [mW]');
+        
         
     case 4  % Loss vs.  AC (2D)
         AC = data.(['T' TempStr]).(['DC' DCstr]).iAC;
-        mLoss = Loss{tind};
-        plot(handles.axsPlot,AC,mLoss(:,ffind,dcind)*1000);
+        mLoss = Loss{tind}; pLoss = mLoss(:,ffind,dcind);
+        
+        if comp
+            mLoss2 = Loss2{tind2};
+            pLoss = pLoss - mLoss2(:,ffind2,dcind2);
+        end
+        plot(handles.axsPlot,AC,pLoss*1000);
         xlabel(handles.axsPlot,'AC Current [A] rms');ylabel(handles.axsPlot,'Losses [mW]');
         title({[LossTitle, ' vs. AC , T = ',TempStr,' , DC = ',DCstr,' , F = ',Fstr];runTitle},...
             'interpreter','none');
@@ -429,6 +459,12 @@ switch yVar(yind)*xVar(xind)
         dcVals(dcVals=='A') = [];       % remove units
         dcVals = str2num(dcVals);       %#ok<ST2NM> % build number array
         mLoss = Loss{tind}; dcLoss = reshape(mLoss(acind,ffind,:),size(mLoss,3),1,1);
+        
+        if comp
+            mLoss2 = Loss2{tind2};
+            dcLoss2 = reshape(mLoss2(acind2,ffind2,:),size(mLoss2,3),1,1);
+            dcLoss = dcLoss - dcLoss2;
+        end
         plot(handles.axsPlot,dcVals,dcLoss*1000);
         xlabel(handles.axsPlot,'DC Current [A] rms');ylabel(handles.axsPlot,'Losses [mW]');
         title({[LossTitle, ' vs. DC , T = ',TempStr,' , AC = ',ACstr,' , F = ',Fstr];runTitle},...
@@ -444,6 +480,15 @@ switch yVar(yind)*xVar(xind)
             LossAll = Loss{tind};
             lossT(tind) = LossAll(acind,ffind,dcind);
         end
+        
+        if comp
+            lossT2 = zeros(1,length(tList));
+            for tind = 1:length(tList)
+                LossAll = Loss2{tind};
+                lossT2(tind) = LossAll(acind2,ffind2,dcind2);
+            end
+            lossT = lossT - lossT2;
+        end
         plot(handles.axsPlot,tVals,lossT*1000);
         xlabel(handles.axsPlot,'Temperature [K]');ylabel(handles.axsPlot,'Losses [mW]');
         title({[LossTitle, ' vs. T , DC = ',DCstr,' , AC = ',ACstr,' , F = ',Fstr];runTitle},...
@@ -453,6 +498,11 @@ switch yVar(yind)*xVar(xind)
         pdata = data.(['T' TempStr]).(['DC' DCstr]);
         mLoss = Loss{tind}; mLoss = mLoss(:,:,dcind);
         [X,Y] = meshgrid(sort(pdata.iAC),sort(pdata.frequency));
+        
+        if comp
+            mLoss2 = Loss{tind2}; mLoss2 = mLoss2(:,:,dcind2);
+            mLoss = mLoss - mLoss2;
+        end
         surf(handles.axsPlot,X,Y,1000.*mLoss','FaceColor','interp','FaceLighting','gouraud');
         xlabel(handles.axsPlot,'AC Current RMS [A]');ylabel(handles.axsPlot,'frequency [Hz]');
         zlabel(handles.axsPlot,'Losses [mW]');
@@ -467,6 +517,11 @@ switch yVar(yind)*xVar(xind)
         dcVals(dcVals=='A') = [];       % remove units
         dcVals = str2num(dcVals);       %#ok<ST2NM> % build number array
         [X,Y] = meshgrid(dcVals,sort(pdata.frequency));
+        
+        if comp
+            mLoss2 = Loss{tind2}; mLoss2 = reshape(mLoss2(acind2,:,:),size(mLoss2,2),size(mLoss2,3),1);
+            mLoss = mLoss - mLoss2;
+        end
         surf(handles.axsPlot,X,Y,1000.*mLoss,'FaceColor','interp','FaceLighting','gouraud');
         xlabel(handles.axsPlot,'DC Current [A]');ylabel(handles.axsPlot,'frequency [Hz]');
         zlabel(handles.axsPlot,'Losses [mW]');
@@ -486,6 +541,15 @@ switch yVar(yind)*xVar(xind)
             lossT(tind,:) = LossAll(acind,:,dcind);
         end
         % axes('Fontsize',12);
+        
+        if comp
+            lossT2 = zeros(length(tVals),length(fVals));
+            for tind = 1:length(tList)
+                LossAll = Loss2{tind};
+                lossT2(tind,:) = LossAll(acind2,:,dcind2);
+            end
+            lossT = lossT - lossT2;
+        end
         surf(handles.axsPlot,X,Y,1000.*lossT,'FaceColor','interp','FaceLighting','gouraud');
         xlabel(handles.axsPlot,'Frequency [Hz]');ylabel(handles.axsPlot,'Temperature [K]');
         zlabel(handles.axsPlot,'Losses [mW]');
@@ -500,6 +564,11 @@ switch yVar(yind)*xVar(xind)
         dcVals(dcVals=='A') = [];       % remove units
         dcVals = str2num(dcVals);       %#ok<ST2NM> % build number array
         [X,Y] = meshgrid(dcVals,sort(pdata.iAC));
+        
+        if comp
+            mLoss2 = Loss2{tind}; mLoss2 = reshape(mLoss2(:,ffind2,:),size(mLoss2,1),size(mLoss2,3),1);
+            mLoss = mLoss - mLoss2;
+        end
         surf(handles.axsPlot,X,Y,1000.*mLoss,'FaceColor','interp','FaceLighting','gouraud');
         xlabel(handles.axsPlot,'DC Current [A]');ylabel(handles.axsPlot,'AC current RMS [A]');
         zlabel(handles.axsPlot,'Losses [mW]');
@@ -519,6 +588,15 @@ switch yVar(yind)*xVar(xind)
             lossT(tind,:) = LossAll(:,ffind,dcind)';
         end
         % axes('Fontsize',12);
+        
+        if comp
+            lossT2 = zeros(length(tVals),length(acVals));
+            for tind = 1:length(tList)
+                LossAll = Loss2{tind};
+                lossT2(tind,:) = LossAll(:,ffind2,dcind2)';
+            end
+            lossT = lossT - lossT2;
+        end
         surf(handles.axsPlot,X,Y,1000.*lossT,'FaceColor','interp','FaceLighting','gouraud');
         xlabel(handles.axsPlot,'AC Current RMS [A]');ylabel(handles.axsPlot,'Temperature [K]');
         zlabel(handles.axsPlot,'Losses [mW]');
@@ -541,6 +619,15 @@ switch yVar(yind)*xVar(xind)
             lossT(tind,:) = reshape(LossAll(acind,ffind,:),1,size(LossAll,3),1);
         end
         % axes('Fontsize',12);
+        
+        if comp
+            lossT2 = zeros(length(tVals),length(dcVals));
+            for tind = 1:length(tList)
+                LossAll = Loss2{tind};
+                lossT2(tind,:) = reshape(LossAll(acind2,ffind2,:),1,size(LossAll,3),1);
+            end
+            lossT = lossT - lossT2;
+        end
         surf(handles.axsPlot,X,Y,1000.*lossT,'FaceColor','interp','FaceLighting','gouraud');
         xlabel(handles.axsPlot,'DC Current [A]');ylabel(handles.axsPlot,'Temperature [K]');
         zlabel(handles.axsPlot,'Losses [mW]');
@@ -674,6 +761,6 @@ function chkComp_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 comp = get(hObject,'value');
 if comp
-    uiwait(compGUI);
+    compGUI;
 end
 % Hint: get(hObject,'Value') returns toggle state of chkComp
