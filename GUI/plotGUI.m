@@ -22,7 +22,7 @@ function varargout = plotGUI(varargin)
 
 % Edit the above text to modify the response to help plotGUI
 
-% Last Modified by GUIDE v2.5 10-Oct-2016 11:33:57
+% Last Modified by GUIDE v2.5 30-Oct-2016 12:01:14
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -86,46 +86,108 @@ function btnLoad_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 defPath = getappdata(0,'dataPath');
-[FileName,FilePath] = uigetfile([defPath '\*.mat'],'Select the MATLAB file containing Commands');
-if FileName==0
-    errordlg('Error Reading File','Error 0x002');
+[FileName,FilePath] = uigetfile([defPath '\*.mat'],'Select the file containing the data','MultiSelect','off');
+% [FileName,FilePath] = uigetfile([defPath '\*.mat'],'Select the file containing the data. 2 files for comparision.','MultiSelect','on');
+
+if ~iscell(FileName)
+    if FileName==0
+        errordlg('Error Reading File','Error 0x002');
+        return
+    end
+    load([FilePath,FileName]);  % get listbox contents
+    cla(handles.axsPlot,'reset');
+    set(handles.btnSwap,'visible','off');
+    set(handles.btnSwap,'enable','off');
+    set(handles.txtVolume,'string',['Volume = ' num2str(data.volume*10e9) '  mm^3']);
+    % set(handles.txtTitle,'string',FileName);
+    title(handles.axsPlot,FileName,'Interpreter','none');
+    TempStr = getNamesByHead(data,'T');
+    set(handles.mnuTemp,'string',TempStr); set(handles.mnuTemp,'value',1);
+    DCstr = getNamesByHead(data.(['T' TempStr{1}]),'DC');
+    set(handles.mnuDC,'string',DCstr); set(handles.mnuDC,'value',1);
+    ACstr = getNamesByHead(data.(['T' TempStr{1}]).(['DC' DCstr{1}]),'AC');
+    set(handles.mnuAC,'string',ACstr); set(handles.mnuAC,'value',1);
+    Fstr = getNamesByHead(data.(['T' TempStr{1}]).(['DC' DCstr{1}]).(['AC' ACstr{1}]),'F');
+    set(handles.mnuFreq,'string',Fstr); set(handles.mnuFreq,'value',1);
+    setappdata(0,'data',data);
+    setappdata(0,'runTitle',data.runtitle)
+
+    cLoss = cell(length(TempStr),1);
+    cLossH3 = cLoss; cLossPC = cLoss; cLossH3PC = cLoss;
+
+    for tind = 1:length(TempStr)
+        DCstr = getNamesByHead(data.(['T' TempStr{tind}]),'DC');
+        mloss = zeros(length(ACstr),length(Fstr),length(DCstr));
+        mlossH3 = zeros(length(ACstr),length(Fstr),length(DCstr));
+        for dcind = 1:length(DCstr)
+            mloss(:,:,dcind) = data.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]).loss;
+            mlossH3(:,:,dcind) = data.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]).lossH3;
+        end
+        cLoss{tind} = mloss;
+        cLossH3{tind} = mlossH3;
+        F = data.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]).frequency;
+        cLossPC{tind} = mloss./repmat(F,size(mloss,1),1,size(mloss,3));
+        cLossH3PC{tind} = mlossH3./repmat(F,size(mlossH3,1),1,size(mlossH3,3));
+    end
+elseif length(FileName)==2
+    
+    load([FilePath,FileName{1}]);  % get listbox contents
+    data2 = data;
+    load([FilePath,FileName{2}]);  % get listbox contents
+    
+    if data.volume~=data2.volume
+        errordlg('Volume doesn''t match','Error 0x004');
+        return
+    end
+    set(handles.txtVolume,'string',['Volume = ' num2str(data.volume*10e9) '  mm^3']);
+    % set(handles.txtTitle,'string',FileName);
+    TempStr = getNamesByHead(data,'T');
+    set(handles.mnuTemp,'string',TempStr); set(handles.mnuTemp,'value',1);
+    DCstr = getNamesByHead(data.(['T' TempStr{1}]),'DC');
+    set(handles.mnuDC,'string',DCstr); set(handles.mnuDC,'value',1);
+    ACstr = getNamesByHead(data.(['T' TempStr{1}]).(['DC' DCstr{1}]),'AC');
+    set(handles.mnuAC,'string',ACstr); set(handles.mnuAC,'value',1);
+    Fstr = getNamesByHead(data.(['T' TempStr{1}]).(['DC' DCstr{1}]).(['AC' ACstr{1}]),'F');
+    set(handles.mnuFreq,'string',Fstr); set(handles.mnuFreq,'value',1);
+    
+    cLoss = cell(length(TempStr),1);
+    cLossH3 = cLoss; cLossPC = cLoss; cLossH3PC = cLoss;
+    
+    for tind = 1:length(TempStr)
+        DCstr = getNamesByHead(data.(['T' TempStr{tind}]),'DC');
+        mloss = zeros(length(ACstr),length(Fstr),length(DCstr));
+        mlossH3 = zeros(length(ACstr),length(Fstr),length(DCstr));
+        for dcind = 1:length(DCstr)
+            try
+                mloss(:,:,dcind) = data.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]).loss - data2.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]).loss;
+                mlossH3(:,:,dcind) = data.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]).lossH3 - data2.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]).lossH3;
+            catch
+                errordlg('AC & F values must agree','Error 0x005');
+                return
+            end
+        end
+        cLoss{tind} = mloss;
+        cLossH3{tind} = mlossH3;
+        F = data.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]).frequency;
+        cLossPC{tind} = mloss./repmat(F,size(mloss,1),1,size(mloss,3));
+        cLossH3PC{tind} = mlossH3./repmat(F,size(mlossH3,1),1,size(mlossH3,3));
+    end
+    
+    cla(handles.axsPlot,'reset');
+    setappdata(0,'data',data);
+    setappdata(0,'runTitle',[data.runtitle,' vs. ',data2.runtitle])
+    title(handles.axsPlot,[data.runtitle,' vs. ',data2.runtitle],'Interpreter','none');
+    set(handles.btnSwap,'visible','on');
+    set(handles.btnSwap,'enable','on');
+    
+else
+    errordlg('Can''t choose more than 2 files at once','Error 0x003');
     return
 end
-load([FilePath,FileName]);  % get listbox contents
-cla(handles.axsPlot,'reset');
-set(handles.txtVolume,'string',['Volume = ' num2str(data.volume*10e9) '  mm^3']);
-% set(handles.txtTitle,'string',FileName);
-title(handles.axsPlot,FileName,'Interpreter','none');
-TempStr = getNamesByHead(data,'T');
-set(handles.mnuTemp,'string',TempStr); set(handles.mnuTemp,'value',1);
-DCstr = getNamesByHead(data.(['T' TempStr{1}]),'DC');
-set(handles.mnuDC,'string',DCstr); set(handles.mnuDC,'value',1);
-ACstr = getNamesByHead(data.(['T' TempStr{1}]).(['DC' DCstr{1}]),'AC');
-set(handles.mnuAC,'string',ACstr); set(handles.mnuAC,'value',1);
-Fstr = getNamesByHead(data.(['T' TempStr{1}]).(['DC' DCstr{1}]).(['AC' ACstr{1}]),'F');
-set(handles.mnuFreq,'string',Fstr); set(handles.mnuFreq,'value',1);
-setappdata(0,'data',data);
 
-
-cLoss = cell(length(TempStr),1);
-cLossH3 = cLoss; cLossPC = cLoss; cLossH3PC = cLoss;
-
-for tind = 1:length(TempStr)
-    DCstr = getNamesByHead(data.(['T' TempStr{tind}]),'DC');
-    mloss = zeros(length(ACstr),length(Fstr),length(DCstr));
-    mlossH3 = zeros(length(ACstr),length(Fstr),length(DCstr));
-    for dcind = 1:length(DCstr)
-        mloss(:,:,dcind) = data.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]).loss;
-        mlossH3(:,:,dcind) = data.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]).lossH3;
-    end
-    cLoss{tind} = mloss;
-    cLossH3{tind} = mlossH3;
-    F = data.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]).frequency;
-    cLossPC{tind} = mloss./repmat(F,size(mloss,1),1,size(mloss,3));
-    cLossH3PC{tind} = mlossH3./repmat(F,size(mlossH3,1),1,size(mlossH3,3));
-end
 setappdata(0,'cLoss',cLoss); setappdata(0,'cLossH3',cLossH3);
 setappdata(0,'cLossPC',cLossPC); setappdata(0,'cLossH3PC',cLossH3PC);
+
 
 
 % --- Executes on selection change in mnuPlot.
@@ -306,7 +368,7 @@ function btnPlot_Callback(hObject, eventdata, handles)
 lossChoice = get(handles.mnuPlot,'value');
 TempStr = get(handles.mnuTemp,'string');
 data = getappdata(0,'data');
-runTitle = data.runtitle;
+runTitle = getappdata(0,'runTitle');
 
 pc = get(handles.chkPC,'value');
 pv = get(handles.chkPV,'value');
@@ -322,14 +384,30 @@ end
 
 if pc   % draw per cycle
     LossStr = [LossStr 'PC'];
+    LossTitle = [LossTitle ' Per Cycle'];
 end
 
 Loss = getappdata(0,LossStr);
 
 if pv   % draw per volume
+    LossTitle = [LossTitle ' Per Volume'];
     for tind = 1:length(TempStr)
         Loss{tind} = Loss{tind}/data.volume;
     end
+end
+
+comp = get(handles.chkComp,'value');
+if comp
+    runTitle2 = getappdata(0,'runTitle2');
+    Loss2 = getappdata(0,[LossStr '2']);
+    tind2 = getappdata(0,'tind2');
+    TempStr2 = getappdata(0,'TempStr2');
+    dcind2 = getappdata(0,'dcind2');
+    DCstr2 = getappdata(0,'DCstr2');
+    acind2 = getappdata(0,'acind2');
+    ACstr2 = getappdata(0,'ACstr2');
+    ffind2 = getappdata(0,'ffind2');
+    Fstr2 = getappdata(0,'Fstr2');
 end
 
 tind = get(handles.mnuTemp,'value');
@@ -348,18 +426,38 @@ yind = get(handles.mnuY,'value');
 switch yVar(yind)*xVar(xind)
     case 1  % Loss vs.  F (2D)
         mLoss = Loss{tind}; F = data.(['T' TempStr]).(['DC' DCstr]).frequency;
-        plot(handles.axsPlot,F,mLoss(acind,:,dcind)*1000);
+        pLoss = mLoss(acind,:,dcind);
+        
+        if comp
+            mLoss2 = Loss2{tind2};
+            pLoss = pLoss - mLoss2(acind2,:,dcind2);
+            titleStr = {[LossTitle, ' vs. Frequency'];...
+                [runTitle,' @ T = ',TempStr,' , DC = ',DCstr,' , AC = ',ACstr];...
+                ['vs. ',runTitle2,' @ T = ',TempStr2,' , DC = ',DCstr2,' , AC = ',ACstr2]};
+        else
+            titleStr = {[LossTitle, ' vs. Frequency'];['T = ',TempStr,' , DC = ',DCstr,' , AC = ',ACstr];runTitle};
+        end
+        plot(handles.axsPlot,F,pLoss*1000);
+        title(titleStr,'interpreter','none');
         xlabel(handles.axsPlot,'frequency [Hz]');ylabel(handles.axsPlot,'Losses [mW]');
-        title({[LossTitle, ' vs. Frequency , T = ',TempStr,' , DC = ',DCstr,' , AC = ',ACstr];runTitle},...
-            'interpreter','none');
+        
         
     case 4  % Loss vs.  AC (2D)
         AC = data.(['T' TempStr]).(['DC' DCstr]).iAC;
-        mLoss = Loss{tind};
-        plot(handles.axsPlot,AC,mLoss(:,ffind,dcind)*1000);
+        mLoss = Loss{tind}; pLoss = mLoss(:,ffind,dcind);
+        
+        if comp
+            mLoss2 = Loss2{tind2};
+            pLoss = pLoss - mLoss2(:,ffind2,dcind2);
+            titleStr = {[LossTitle, ' vs. AC'];...
+                [runTitle,' @ T = ',TempStr,' , DC = ',DCstr,' , F = ',Fstr];...
+                ['vs. ',runTitle2,' @ T = ',TempStr2,' , DC = ',DCstr2,' , F = ',Fstr2]};
+        else
+            titleStr = {[LossTitle, ' vs. AC'];['T = ',TempStr,' , DC = ',DCstr,' , F = ',Fstr];runTitle};
+        end
+        plot(handles.axsPlot,AC,pLoss*1000);
         xlabel(handles.axsPlot,'AC Current [A] rms');ylabel(handles.axsPlot,'Losses [mW]');
-        title({[LossTitle, ' vs. AC , T = ',TempStr,' , DC = ',DCstr,' , F = ',Fstr];runTitle},...
-            'interpreter','none');
+        title(titleStr,'interpreter','none');
         
     case 6  % Loss vs.  DC (2D)
         dcList = get(handles.mnuDC,'string');
@@ -367,10 +465,20 @@ switch yVar(yind)*xVar(xind)
         dcVals(dcVals=='A') = [];       % remove units
         dcVals = str2num(dcVals);       %#ok<ST2NM> % build number array
         mLoss = Loss{tind}; dcLoss = reshape(mLoss(acind,ffind,:),size(mLoss,3),1,1);
+        
+        if comp
+            mLoss2 = Loss2{tind2};
+            dcLoss2 = reshape(mLoss2(acind2,ffind2,:),size(mLoss2,3),1,1);
+            dcLoss = dcLoss - dcLoss2;
+             titleStr = {[LossTitle, ' vs. DC'];...
+                [runTitle,' @ T = ',TempStr,' , AC = ',ACstr,' , F = ',Fstr];...
+                ['vs. ',runTitle2,' @ T = ',TempStr2,' , AC = ',ACstr2,' , F = ',Fstr2]};
+        else
+            titleStr = {[LossTitle, ' vs. DC'];['T = ',TempStr,' , AC = ',ACstr,' , F = ',Fstr];runTitle};
+        end
         plot(handles.axsPlot,dcVals,dcLoss*1000);
         xlabel(handles.axsPlot,'DC Current [A] rms');ylabel(handles.axsPlot,'Losses [mW]');
-        title({[LossTitle, ' vs. DC , T = ',TempStr,' , AC = ',ACstr,' , F = ',Fstr];runTitle},...
-            'interpreter','none');
+        title(titleStr,'interpreter','none');
         
     case 8  % Loss vs. T (2D)
         tList = get(handles.mnuTemp,'string');
@@ -382,25 +490,42 @@ switch yVar(yind)*xVar(xind)
             LossAll = Loss{tind};
             lossT(tind) = LossAll(acind,ffind,dcind);
         end
+        
+        if comp
+            lossT2 = zeros(1,length(tList));
+            for tind = 1:length(tList)
+                LossAll = Loss2{tind};
+                lossT2(tind) = LossAll(acind2,ffind2,dcind2);
+            end
+            lossT = lossT - lossT2;
+            titleStr = {[LossTitle, ' vs. T & DC'];...
+                [runTitle,' @ AC = ',DCstr,' , F = ',Fstr];...
+                ['vs. ',runTitle2,' @ AC = ',ACstr2,' , F = ',Fstr2]};
+        else
+            titleStr = {[LossTitle, ' vs. AC'];['T = ',TempStr,' , DC = ',DCstr,' , F = ',Fstr];runTitle};
+        end
         plot(handles.axsPlot,tVals,lossT*1000);
         xlabel(handles.axsPlot,'Temperature [K]');ylabel(handles.axsPlot,'Losses [mW]');
-        title({[LossTitle, ' vs. T , DC = ',DCstr,' , AC = ',ACstr,' , F = ',Fstr];runTitle},...
-            'interpreter','none');
+        title(titleStr,'interpreter','none');
         
     case {3,12}  % Loss vs. F & AC (3D)
         pdata = data.(['T' TempStr]).(['DC' DCstr]);
         mLoss = Loss{tind}; mLoss = mLoss(:,:,dcind);
         [X,Y] = meshgrid(sort(pdata.iAC),sort(pdata.frequency));
-        surf(handles.axsPlot,X,Y,1000.*mLoss','FaceColor','interp','FaceLighting','gouraud');
-        try
-            axis(handles.axsPlot,[min(pdata.iAC) max(pdata.iAC) min(pdata.frequency) max(pdata.frequency) 900*min(min(mLoss,[],1)) 1100*max(max(mLoss,[],1))]);
-        catch
-            disp('error setting axes');
+        
+        if comp
+            mLoss2 = Loss{tind2}; mLoss2 = mLoss2(:,:,dcind2);
+            mLoss = mLoss - mLoss2;
+            titleStr = {[LossTitle, ' vs. F & AC'];...
+                [runTitle,' @ T = ',TempStr,' , DC = ',DCstr];...
+                ['vs. ',runTitle2,' @ T = ',TempStr2,' , DC = ',DCstr2]};
+        else
+            titleStr = {[LossTitle, ' vs. F & AC'];['T = ',TempStr,' , DC = ',DCstr];runTitle};
         end
+        surf(handles.axsPlot,X,Y,1000.*mLoss','FaceColor','interp','FaceLighting','gouraud');
         xlabel(handles.axsPlot,'AC Current RMS [A]');ylabel(handles.axsPlot,'frequency [Hz]');
         zlabel(handles.axsPlot,'Losses [mW]');
-        title({[LossTitle, ' vs. AC & F ,',' T = ',TempStr,' , DC = ',DCstr];runTitle},...
-            'interpreter','none');
+        title(titleStr,'interpreter','none');
 
     case {5,18}  % Loss vs. F & DC (3D)
         pdata = data.(['T' TempStr]).(['DC' DCstr]);
@@ -410,16 +535,20 @@ switch yVar(yind)*xVar(xind)
         dcVals(dcVals=='A') = [];       % remove units
         dcVals = str2num(dcVals);       %#ok<ST2NM> % build number array
         [X,Y] = meshgrid(dcVals,sort(pdata.frequency));
-        surf(handles.axsPlot,X,Y,1000.*mLoss,'FaceColor','interp','FaceLighting','gouraud');
-        try
-            axis(handles.axsPlot,[min(dcVals) max(dcVals) min(pdata.frequency) max(pdata.frequency) 900*min(min(mLoss,[],1)) 1100*max(max(mLoss,[],1))]);
-        catch
-            disp('error setting axes');
+        
+        if comp
+            mLoss2 = Loss{tind2}; mLoss2 = reshape(mLoss2(acind2,:,:),size(mLoss2,2),size(mLoss2,3),1);
+            mLoss = mLoss - mLoss2;
+            titleStr = {[LossTitle, ' vs. DC & F'];...
+                [runTitle,' @ T = ',TempStr,' , AC = ',ACstr];...
+                ['vs. ',runTitle2,' @ T = ',TempStr2,' , AC = ',ACstr2]};
+        else
+            titleStr = {[LossTitle, ' vs. DC & F'];['T = ',TempStr,' , AC = ',ACstr];runTitle};
         end
+        surf(handles.axsPlot,X,Y,1000.*mLoss,'FaceColor','interp','FaceLighting','gouraud');
         xlabel(handles.axsPlot,'DC Current [A]');ylabel(handles.axsPlot,'frequency [Hz]');
         zlabel(handles.axsPlot,'Losses [mW]');
-        title({[LossTitle, ' vs. DC & F ,',' T = ',TempStr,' , AC = ',ACstr];runTitle},...
-            'interpreter','none');
+        title(titleStr,'interpreter','none');
         
     case {7,24}  % Loss vs. F & T (3D)
         tList = get(handles.mnuTemp,'string');
@@ -434,16 +563,24 @@ switch yVar(yind)*xVar(xind)
             lossT(tind,:) = LossAll(acind,:,dcind);
         end
         % axes('Fontsize',12);
-        surf(handles.axsPlot,X,Y,1000.*lossT,'FaceColor','interp','FaceLighting','gouraud');
-        try
-            axis(handles.axsPlot,[min(fVals) max(fVals) min(tVals) max(tVals) 900*min(min(lossT,[],1)) 1100*max(max(lossT,[],1))]);
-        catch
-            disp('error setting axes');
+        
+        if comp
+            lossT2 = zeros(length(tVals),length(fVals));
+            for tind = 1:length(tList)
+                LossAll = Loss2{tind};
+                lossT2(tind,:) = LossAll(acind2,:,dcind2);
+            end
+            lossT = lossT - lossT2;
+            titleStr = {[LossTitle, ' vs. F & T'];...
+                [runTitle,' @ DC = ',DCstr,' , AC = ',ACstr];...
+                ['vs. ',runTitle2,' @ DC = ',DCstr2,' , AC = ',ACstr2]};
+        else
+            titleStr = {[LossTitle, ' vs. F & T'];['DC = ',DCstr,' , AC = ',ACstr];runTitle};
         end
+        surf(handles.axsPlot,X,Y,1000.*lossT,'FaceColor','interp','FaceLighting','gouraud');
         xlabel(handles.axsPlot,'Frequency [Hz]');ylabel(handles.axsPlot,'Temperature [K]');
         zlabel(handles.axsPlot,'Losses [mW]');
-        title({[LossTitle, ' vs. F & T ,',' DC = ',DCstr,' , AC = ',ACstr];runTitle},...
-            'interpreter','none');
+        title(titleStr,'interpreter','none');
         
     case {20,30} % Loss vs. AC & DC (3D)
         pdata = data.(['T' TempStr]).(['DC' DCstr]);
@@ -453,16 +590,20 @@ switch yVar(yind)*xVar(xind)
         dcVals(dcVals=='A') = [];       % remove units
         dcVals = str2num(dcVals);       %#ok<ST2NM> % build number array
         [X,Y] = meshgrid(dcVals,sort(pdata.iAC));
-        surf(handles.axsPlot,X,Y,1000.*mLoss,'FaceColor','interp','FaceLighting','gouraud');
-        try
-            axis(handles.axsPlot,[min(dcVals) max(dcVals) min(pdata.iAC) max(pdata.iAC) 900*min(min(mLoss,[],1)) 1100*max(max(mLoss,[],1))]);
-        catch
-            disp('error setting axes');
+        
+        if comp
+            mLoss2 = Loss2{tind}; mLoss2 = reshape(mLoss2(:,ffind2,:),size(mLoss2,1),size(mLoss2,3),1);
+            mLoss = mLoss - mLoss2;
+            titleStr = {[LossTitle, ' vs. DC & AC'];...
+                [runTitle,' @ T = ',TempStr,' , F = ',Fstr];...
+                ['vs. ',runTitle2,' @ T = ',TempStr2,' , F = ',Fstr2]};
+        else
+            titleStr = {[LossTitle, ' vs. DC & AC'];['T = ',TempStr,' , F = ',Fstr];runTitle};
         end
+        surf(handles.axsPlot,X,Y,1000.*mLoss,'FaceColor','interp','FaceLighting','gouraud');
         xlabel(handles.axsPlot,'DC Current [A]');ylabel(handles.axsPlot,'AC current RMS [A]');
         zlabel(handles.axsPlot,'Losses [mW]');
-        title({[LossTitle, ' vs. DC & AC ,',' T = ',TempStr,' , F = ',Fstr];runTitle},...
-            'interpreter','none');
+        title(titleStr,'interpreter','none');
         
     case {28,40} % Loss vs. AC & T (3D)
         tList = get(handles.mnuTemp,'string');
@@ -477,16 +618,24 @@ switch yVar(yind)*xVar(xind)
             lossT(tind,:) = LossAll(:,ffind,dcind)';
         end
         % axes('Fontsize',12);
-        surf(handles.axsPlot,X,Y,1000.*lossT,'FaceColor','interp','FaceLighting','gouraud');
-        try
-            axis(handles.axsPlot,[min(acVals) max(acVals) min(tVals) max(tVals) 900*min(min(lossT,[],1)) 1100*max(max(lossT,[],1))]);
-        catch
-            disp('error setting axes');
+        
+        if comp
+            lossT2 = zeros(length(tVals),length(acVals));
+            for tind = 1:length(tList)
+                LossAll = Loss2{tind};
+                lossT2(tind,:) = LossAll(:,ffind2,dcind2)';
+            end
+            lossT = lossT - lossT2;
+            titleStr = {[LossTitle, ' vs. AC & T'];...
+                [runTitle ' @ DC = ',DCstr,' , F = ',Fstr];...
+                ['vs. ',runTitle2,' @ DC = ',DCstr2,' , F = ',Fstr2]};
+        else
+            titleStr = {[LossTitle, ' vs. AC & T'];['DC = ',DCstr,' , F = ',Fstr];runTitle};
         end
+        surf(handles.axsPlot,X,Y,1000.*lossT,'FaceColor','interp','FaceLighting','gouraud');
         xlabel(handles.axsPlot,'AC Current RMS [A]');ylabel(handles.axsPlot,'Temperature [K]');
         zlabel(handles.axsPlot,'Losses [mW]');
-        title({[LossTitle, ' vs. AC & T ,',' DC = ',DCstr,' , F = ',Fstr];runTitle},...
-            'interpreter','none');
+        title(titleStr,'interpreter','none');
         
     case {42,56} % Loss vs. DC & T (3D)
         tList = get(handles.mnuTemp,'string');
@@ -504,19 +653,27 @@ switch yVar(yind)*xVar(xind)
             lossT(tind,:) = reshape(LossAll(acind,ffind,:),1,size(LossAll,3),1);
         end
         % axes('Fontsize',12);
-        surf(handles.axsPlot,X,Y,1000.*lossT,'FaceColor','interp','FaceLighting','gouraud');
-        try
-            axis(handles.axsPlot,[min(dcVals) max(dcVals) min(tVals) max(tVals) 900*min(min(lossT,[],1)) 1100*max(max(lossT,[],1))]);
-        catch
-            disp('error setting axes');
+        
+        if comp
+            lossT2 = zeros(length(tVals),length(dcVals));
+            for tind = 1:length(tList)
+                LossAll = Loss2{tind};
+                lossT2(tind,:) = reshape(LossAll(acind2,ffind2,:),1,size(LossAll,3),1);
+            end
+            lossT = lossT - lossT2;
+            titleStr = {[LossTitle, ' vs. DC & T'];...
+                [runTitle,' @ AC = ',ACstr,' , F = ',Fstr];...
+                ['vs. ',runTitle2,' @ AC = ',ACstr2,' , F = ',Fstr2]};
+        else
+            titleStr = {[LossTitle, ' vs. AC'];['AC = ',ACstr,' , F = ',Fstr];runTitle};
         end
+        surf(handles.axsPlot,X,Y,1000.*lossT,'FaceColor','interp','FaceLighting','gouraud');
         xlabel(handles.axsPlot,'DC Current [A]');ylabel(handles.axsPlot,'Temperature [K]');
         zlabel(handles.axsPlot,'Losses [mW]');
-        title({[LossTitle, ' vs. DC & T ,',' AC = ',ACstr,' , F = ',Fstr];runTitle},...
-            'interpreter','none');
+        title(titleStr,'interpreter','none');
         
     otherwise
-        yVar(yind)*xVar(xind)
+        yVar(yind)*xVar(xind);
         error('Not a valid choice');
 end
 
@@ -528,7 +685,13 @@ function btnSave_Callback(hObject, eventdata, handles)
 % hObject    handle to btnSave (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-FileName = '';% get(handles.file_name_edit,'String');  % get the desired filename
+th = get(handles.axsPlot,'Title');
+titleStr = get(th,'string');
+FileName = strjoin(titleStr,'_');
+% FileName = strrep(FileName,' ','');
+FileName = strrep(FileName,'.','');
+FileName = strrep(FileName,',','_');
+% FileName = '';% get(handles.file_name_edit,'String');  % get the desired filename
 dataPath = getappdata(0,'dataPath');
 [FileName,dir] = uiputfile('*.png','Save Script',[dataPath FileName]);
 if ~dir
@@ -536,14 +699,14 @@ if ~dir
     return;
 end
 FileName = [dir,FileName(1:end-4)];
-NewFig = figure;
+NewFig = figure('units','inches','position',[0.5 0.5 2 1.5]*3.5);
 ax_new = copyobj(handles.axsPlot,NewFig);
 % hgsave(NewFig, 'myFigure.fig');
 % set(NewFig,'units','inches');
 % set(NewFig,'position',[0.25 0.25 0.5 0.5]);
 % pos = get(NewFig,'Innerposition');
-set(ax_new,'units','normalized','Position',[0.1 0.15 0.85 0.77]);
-print(NewFig,FileName,'-r300','-dpng');
+set(ax_new,'units','normalized','Position',[0.1 0.1 0.85 0.77]);
+print(NewFig,FileName,'-r400','-dpng');
 close(NewFig);
 winopen([FileName,'.png']);
 
@@ -553,13 +716,13 @@ function btnOpen_Callback(hObject, eventdata, handles)
 % hObject    handle to btnOpen (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-NewFig = figure;
+NewFig = figure('units','inches','position',[0.5 0.5 2 1.5]*3.5);
 ax_new = copyobj(handles.axsPlot,NewFig);
 % hgsave(NewFig, 'myFigure.fig');
 % set(NewFig,'units','normalized');
 % set(NewFig,'position',[0.25 0.25 0.5 0.5]);
 % pos = get(NewFig,'Innerposition');
-set(ax_new,'units','normalized','Position',[0.1 0.15 0.85 0.77]);
+set(ax_new,'units','normalized','Position',[0.1 0.1 0.85 0.77]);
 
 
 % --- Executes on selection change in mnuX.
@@ -610,3 +773,38 @@ function mnuY_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
+
+
+% --- Executes on button press in btnSwap.
+function btnSwap_Callback(hObject, eventdata, handles)
+% hObject    handle to btnSwap (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+cLoss = getappdata(0,'cLoss'); cLossPC = getappdata(0,'cLossPC');
+cLossH3 = getappdata(0,'cLossH3'); cLossH3PC = getappdata(0,'cLossH3PC');
+runTitle = getappdata(0,'runTitle');
+
+for tind = length(cLoss)
+     cLoss{tind} = -cLoss{tind};
+     cLossPC{tind} = -cLossPC{tind};
+     cLossH3{tind} = -cLossH3{tind};
+     cLossH3PC{tind} = -cLossH3PC{tind};
+end
+
+vsind = strfind(runTitle,' vs. ');
+newRunTitle = [runTitle(vsind+5:end),' vs. ',runTitle(1:vsind)];
+setappdata(0,'runTitle',newRunTitle);
+setappdata(0,'cLoss',cLoss); setappdata(0,'cLossH3',cLossH3);
+setappdata(0,'cLossPC',cLossPC); setappdata(0,'cLossH3PC',cLossH3PC);
+
+
+% --- Executes on button press in chkComp.
+function chkComp_Callback(hObject, eventdata, handles)
+% hObject    handle to chkComp (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+comp = get(hObject,'value');
+if comp
+    compGUI;
+end
+% Hint: get(hObject,'Value') returns toggle state of chkComp
