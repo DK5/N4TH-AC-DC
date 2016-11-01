@@ -22,7 +22,7 @@ function varargout = plotGUI(varargin)
 
 % Edit the above text to modify the response to help plotGUI
 
-% Last Modified by GUIDE v2.5 30-Oct-2016 12:01:14
+% Last Modified by GUIDE v2.5 01-Nov-2016 14:47:46
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -810,3 +810,30 @@ if comp
     compGUI;
 end
 % Hint: get(hObject,'Value') returns toggle state of chkComp
+
+
+% --- Executes on button press in btnSaveVars.
+function btnSaveVars_Callback(hObject, eventdata, handles)
+% hObject    handle to btnSaveVars (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+dataObjs = get(handles.axsPlot, 'Children'); %handles to low-level graphics objects in axes
+xdata = get(dataObjs, 'XData');  %data from low-level grahics objects
+ydata = get(dataObjs, 'YData');
+
+xlabelStr = get(get(handles.axsPlot,'xlabel'),'string');
+xlabelStr = xlabelStr(1:strfind(xlabelStr,' ')-1);
+ylabelStr = get(get(handles.axsPlot,'ylabel'),'string');
+ylabelStr = ylabelStr(1:strfind(ylabelStr,' ')-1);
+
+assignin('base',xlabelStr,xdata);
+assignin('base',ylabelStr,ydata);
+
+try
+    zdata = get(dataObjs, 'ZData');
+    zlabelStr = get(get(handles.axsPlot,'zlabel'),'string');
+    zlabelStr = zlabelStr(1:strfind(zlabelStr,' ')-1);
+    assignin('base',zlabelStr,zdata);
+catch
+end
+
