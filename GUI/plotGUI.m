@@ -221,11 +221,8 @@ TempStr = get(hObject,'string');
 tind = get(hObject,'value');
 data = getappdata(0,'data');
 DCstr = getNamesByHead(data.(['T' TempStr{tind}]),'DC');
-set(handles.mnuDC,'string',DCstr); set(handles.mnuDC,'value',1);
-ACstr = getNamesByHead(data.(['T' TempStr{tind}]).(['DC' DCstr{1}]),'AC');
-set(handles.mnuAC,'string',ACstr); set(handles.mnuAC,'value',1);
-Fstr = getNamesByHead(data.(['T' TempStr{tind}]).(['DC' DCstr{1}]).(['AC' ACstr{1}]),'F');
-set(handles.mnuFreq,'string',Fstr); set(handles.mnuFreq,'value',1);
+set(handles.mnuDC,'string',DCstr);
+mnuDC_Callback(handles.mnuDC,eventdata,handles);
 % Hints: contents = cellstr(get(hObject,'String')) returns mnuTemp contents as cell array
 %        contents{get(hObject,'Value')} returns selected item from mnuTemp
 
@@ -254,9 +251,8 @@ data = getappdata(0,'data');
 DCstr = get(handles.mnuDC,'string');
 dcind = get(handles.mnuDC,'value');
 ACstr = getNamesByHead(data.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]),'AC');
-set(handles.mnuAC,'string',ACstr); set(handles.mnuAC,'value',1);
-Fstr = getNamesByHead(data.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]).(['AC' ACstr{1}]),'F');
-set(handles.mnuFreq,'string',Fstr); set(handles.mnuFreq,'value',1);
+set(handles.mnuAC,'string',ACstr);
+mnuAC_Callback(handles.mnuAC,eventdata,handles);
 % Hints: contents = cellstr(get(hObject,'String')) returns mnuDC contents as cell array
 %        contents{get(hObject,'Value')} returns selected item from mnuDC
 
@@ -287,7 +283,7 @@ dcind = get(handles.mnuDC,'value');
 ACstr = get(handles.mnuAC,'string');
 acind = get(handles.mnuAC,'value');
 Fstr = getNamesByHead(data.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]).(['AC' ACstr{acind}]),'F');
-set(handles.mnuFreq,'string',Fstr); set(handles.mnuFreq,'value',1);
+set(handles.mnuFreq,'string',Fstr);
 % Hints: contents = cellstr(get(hObject,'String')) returns mnuAC contents as cell array
 %        contents{get(hObject,'Value')} returns selected item from mnuAC
 
@@ -389,16 +385,10 @@ end
 
 Loss = getappdata(0,LossStr);
 
-if pv   % draw per volume
-    LossTitle = [LossTitle ' Per Volume'];
-    for tind = 1:length(TempStr)
-        Loss{tind} = Loss{tind}/data.volume;
-    end
-end
-
 comp = get(handles.chkComp,'value');
 if comp
     runTitle2 = getappdata(0,'runTitle2');
+    volume2 = getappdata(0,'volume2');
     Loss2 = getappdata(0,[LossStr '2']);
     tind2 = getappdata(0,'tind2');
     TempStr2 = getappdata(0,'TempStr2');
@@ -409,6 +399,18 @@ if comp
     ffind2 = getappdata(0,'ffind2');
     Fstr2 = getappdata(0,'Fstr2');
 end
+
+
+if pv   % draw per volume
+    LossTitle = [LossTitle ' Per Volume'];
+    for tind = 1:length(TempStr)
+        Loss{tind} = Loss{tind}/data.volume;
+        if comp
+            Loss2{tind} = Loss2{tind}/volume2;
+        end
+    end
+end
+
 
 tind = get(handles.mnuTemp,'value');
 TempStr = TempStr{tind};
@@ -498,11 +500,11 @@ switch yVar(yind)*xVar(xind)
                 lossT2(tind) = LossAll(acind2,ffind2,dcind2);
             end
             lossT = lossT - lossT2;
-            titleStr = {[LossTitle, ' vs. T & DC'];...
-                [runTitle,' @ AC = ',DCstr,' , F = ',Fstr];...
-                ['vs. ',runTitle2,' @ AC = ',ACstr2,' , F = ',Fstr2]};
+            titleStr = {[LossTitle, ' vs. T'];...
+                [runTitle,' @ DC = ',DCstr,' , AC = ',ACstr,' , F = ',Fstr];...
+                ['vs. ',runTitle2,' @ DC = ',DCstr2,' , AC = ',ACstr2,' , F = ',Fstr2]};
         else
-            titleStr = {[LossTitle, ' vs. AC'];['T = ',TempStr,' , DC = ',DCstr,' , F = ',Fstr];runTitle};
+            titleStr = {[LossTitle, ' vs. T'];['DC = ',DCstr,' , AC = ',ACstr,' , F = ',Fstr];runTitle};
         end
         plot(handles.axsPlot,tVals,lossT*1000);
         xlabel(handles.axsPlot,'Temperature [K]');ylabel(handles.axsPlot,'Losses [mW]');
@@ -665,7 +667,7 @@ switch yVar(yind)*xVar(xind)
                 [runTitle,' @ AC = ',ACstr,' , F = ',Fstr];...
                 ['vs. ',runTitle2,' @ AC = ',ACstr2,' , F = ',Fstr2]};
         else
-            titleStr = {[LossTitle, ' vs. AC'];['AC = ',ACstr,' , F = ',Fstr];runTitle};
+            titleStr = {[LossTitle, ' vs. DC & T'];['AC = ',ACstr,' , F = ',Fstr];runTitle};
         end
         surf(handles.axsPlot,X,Y,1000.*lossT,'FaceColor','interp','FaceLighting','gouraud');
         xlabel(handles.axsPlot,'DC Current [A]');ylabel(handles.axsPlot,'Temperature [K]');

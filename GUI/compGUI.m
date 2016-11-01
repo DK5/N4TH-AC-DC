@@ -82,7 +82,7 @@ TempStr = get(hObject,'string');
 tind = get(hObject,'value');
 data = getappdata(0,'data2');
 DCstr = getNamesByHead(data.(['T' TempStr{tind}]),'DC');
-set(handles.mnuDC,'string',DCstr); set(handles.mnuDC,'value',1);
+set(handles.mnuDC,'string',DCstr); %set(handles.mnuDC,'value',1);
 mnuDC_Callback(handles.mnuDC,eventdata,handles);
 
 TempStr = TempStr{tind};
@@ -115,7 +115,7 @@ data = getappdata(0,'data2');
 DCstr = get(handles.mnuDC,'string');
 dcind = get(handles.mnuDC,'value');
 ACstr = getNamesByHead(data.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]),'AC');
-set(handles.mnuAC,'string',ACstr); set(handles.mnuAC,'value',1);
+set(handles.mnuAC,'string',ACstr); %set(handles.mnuAC,'value',1);
 mnuAC_Callback(handles.mnuAC,eventdata,handles);
 
 DCstr = DCstr{dcind};
@@ -150,7 +150,7 @@ dcind = get(handles.mnuDC,'value');
 ACstr = get(handles.mnuAC,'string');
 acind = get(handles.mnuAC,'value');
 Fstr = getNamesByHead(data.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]).(['AC' ACstr{acind}]),'F');
-set(handles.mnuFreq,'string',Fstr); set(handles.mnuFreq,'value',1);
+set(handles.mnuFreq,'string',Fstr); %set(handles.mnuFreq,'value',1);
 mnuFreq_Callback(handles.mnuFreq,eventdata,handles);
 
 ACstr = ACstr{acind};
@@ -212,6 +212,8 @@ end
 
 load([FilePath,FileName]);  % get listbox contents
 set(handles.txtRunTitle,'string',FileName);
+set(handles.txtVolume,'string',['Volume = ' num2str(data.volume*10e9) '  mm^3']);
+setappdata(0,'volume2',data.volume);
 
 TempStr = getNamesByHead(data,'T');
 set(handles.mnuTemp,'string',TempStr); set(handles.mnuTemp,'value',1);
@@ -221,6 +223,10 @@ ACstr = getNamesByHead(data.(['T' TempStr{1}]).(['DC' DCstr{1}]),'AC');
 set(handles.mnuAC,'string',ACstr); set(handles.mnuAC,'value',1);
 Fstr = getNamesByHead(data.(['T' TempStr{1}]).(['DC' DCstr{1}]).(['AC' ACstr{1}]),'F');
 set(handles.mnuFreq,'string',Fstr); set(handles.mnuFreq,'value',1);
+mnuTemp_Callback(handles.mnuTemp,eventdata,handles);
+mnuDC_Callback(handles.mnuDC,eventdata,handles);
+mnuAC_Callback(handles.mnuAC,eventdata,handles);
+mnuFreq_Callback(handles.mnuFreq,eventdata,handles);
 
 setappdata(0,'data2',data);
 setappdata(0,'runTitle2',data.runtitle);
