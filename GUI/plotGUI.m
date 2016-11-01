@@ -86,7 +86,7 @@ function btnLoad_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 defPath = getappdata(0,'dataPath');
-[FileName,FilePath] = uigetfile([defPath '\*.mat'],'Select the file containing the data. 2 files for comparision.','MultiSelect','off');
+[FileName,FilePath] = uigetfile([defPath '\*.mat'],'Select the file containing the data','MultiSelect','off');
 % [FileName,FilePath] = uigetfile([defPath '\*.mat'],'Select the file containing the data. 2 files for comparision.','MultiSelect','on');
 
 if ~iscell(FileName)
@@ -384,11 +384,13 @@ end
 
 if pc   % draw per cycle
     LossStr = [LossStr 'PC'];
+    LossTitle = [LossTitle ' Per Cycle'];
 end
 
 Loss = getappdata(0,LossStr);
 
 if pv   % draw per volume
+    LossTitle = [LossTitle ' Per Volume'];
     for tind = 1:length(TempStr)
         Loss{tind} = Loss{tind}/data.volume;
     end
@@ -429,8 +431,8 @@ switch yVar(yind)*xVar(xind)
         if comp
             mLoss2 = Loss2{tind2};
             pLoss = pLoss - mLoss2(acind2,:,dcind2);
-            titleStr = {[LossTitle, ' vs. Frequency'];runTitle;...
-                ['T = ',TempStr,' , DC = ',DCstr,' , AC = ',ACstr];...
+            titleStr = {[LossTitle, ' vs. Frequency'];...
+                [runTitle,' @ T = ',TempStr,' , DC = ',DCstr,' , AC = ',ACstr];...
                 ['vs. ',runTitle2,' @ T = ',TempStr2,' , DC = ',DCstr2,' , AC = ',ACstr2]};
         else
             titleStr = {[LossTitle, ' vs. Frequency'];['T = ',TempStr,' , DC = ',DCstr,' , AC = ',ACstr];runTitle};
@@ -447,8 +449,8 @@ switch yVar(yind)*xVar(xind)
         if comp
             mLoss2 = Loss2{tind2};
             pLoss = pLoss - mLoss2(:,ffind2,dcind2);
-            titleStr = {[LossTitle, ' vs. AC'];runTitle;...
-                ['T = ',TempStr,' , DC = ',DCstr,' , F = ',Fstr];...
+            titleStr = {[LossTitle, ' vs. AC'];...
+                [runTitle,' @ T = ',TempStr,' , DC = ',DCstr,' , F = ',Fstr];...
                 ['vs. ',runTitle2,' @ T = ',TempStr2,' , DC = ',DCstr2,' , F = ',Fstr2]};
         else
             titleStr = {[LossTitle, ' vs. AC'];['T = ',TempStr,' , DC = ',DCstr,' , F = ',Fstr];runTitle};
@@ -468,11 +470,11 @@ switch yVar(yind)*xVar(xind)
             mLoss2 = Loss2{tind2};
             dcLoss2 = reshape(mLoss2(acind2,ffind2,:),size(mLoss2,3),1,1);
             dcLoss = dcLoss - dcLoss2;
-             titleStr = {[LossTitle, ' vs. DC'];runTitle;...
-                ['T = ',TempStr,' , DC = ',DCstr,' , F = ',Fstr];...
-                ['vs. ',runTitle2,' @ T = ',TempStr2,' , DC = ',DCstr2,' , F = ',Fstr2]};
+             titleStr = {[LossTitle, ' vs. DC'];...
+                [runTitle,' @ T = ',TempStr,' , AC = ',ACstr,' , F = ',Fstr];...
+                ['vs. ',runTitle2,' @ T = ',TempStr2,' , AC = ',ACstr2,' , F = ',Fstr2]};
         else
-            titleStr = {[LossTitle, ' vs. DC'];['T = ',TempStr,' , AC = ',DCstr,' , F = ',Fstr];runTitle};
+            titleStr = {[LossTitle, ' vs. DC'];['T = ',TempStr,' , AC = ',ACstr,' , F = ',Fstr];runTitle};
         end
         plot(handles.axsPlot,dcVals,dcLoss*1000);
         xlabel(handles.axsPlot,'DC Current [A] rms');ylabel(handles.axsPlot,'Losses [mW]');
@@ -496,8 +498,8 @@ switch yVar(yind)*xVar(xind)
                 lossT2(tind) = LossAll(acind2,ffind2,dcind2);
             end
             lossT = lossT - lossT2;
-            titleStr = {[LossTitle, ' vs. T & DC'];runTitle;...
-                ['AC = ',DCstr,' , F = ',Fstr];...
+            titleStr = {[LossTitle, ' vs. T & DC'];...
+                [runTitle,' @ AC = ',DCstr,' , F = ',Fstr];...
                 ['vs. ',runTitle2,' @ AC = ',ACstr2,' , F = ',Fstr2]};
         else
             titleStr = {[LossTitle, ' vs. AC'];['T = ',TempStr,' , DC = ',DCstr,' , F = ',Fstr];runTitle};
@@ -514,8 +516,8 @@ switch yVar(yind)*xVar(xind)
         if comp
             mLoss2 = Loss{tind2}; mLoss2 = mLoss2(:,:,dcind2);
             mLoss = mLoss - mLoss2;
-            titleStr = {[LossTitle, ' vs. F & AC'];runTitle;...
-                ['T = ',TempStr,' , DC = ',DCstr];...
+            titleStr = {[LossTitle, ' vs. F & AC'];...
+                [runTitle,' @ T = ',TempStr,' , DC = ',DCstr];...
                 ['vs. ',runTitle2,' @ T = ',TempStr2,' , DC = ',DCstr2]};
         else
             titleStr = {[LossTitle, ' vs. F & AC'];['T = ',TempStr,' , DC = ',DCstr];runTitle};
@@ -537,8 +539,8 @@ switch yVar(yind)*xVar(xind)
         if comp
             mLoss2 = Loss{tind2}; mLoss2 = reshape(mLoss2(acind2,:,:),size(mLoss2,2),size(mLoss2,3),1);
             mLoss = mLoss - mLoss2;
-            titleStr = {[LossTitle, ' vs. DC & F'];runTitle;...
-                ['T = ',TempStr,' , AC = ',ACstr];...
+            titleStr = {[LossTitle, ' vs. DC & F'];...
+                [runTitle,' @ T = ',TempStr,' , AC = ',ACstr];...
                 ['vs. ',runTitle2,' @ T = ',TempStr2,' , AC = ',ACstr2]};
         else
             titleStr = {[LossTitle, ' vs. DC & F'];['T = ',TempStr,' , AC = ',ACstr];runTitle};
@@ -569,11 +571,11 @@ switch yVar(yind)*xVar(xind)
                 lossT2(tind,:) = LossAll(acind2,:,dcind2);
             end
             lossT = lossT - lossT2;
-            titleStr = {[LossTitle, ' vs. F & T'];runTitle;...
-                [' , DC = ',DCstr,' , AC = ',ACstr];...
+            titleStr = {[LossTitle, ' vs. F & T'];...
+                [runTitle,' @ DC = ',DCstr,' , AC = ',ACstr];...
                 ['vs. ',runTitle2,' @ DC = ',DCstr2,' , AC = ',ACstr2]};
         else
-            titleStr = {[LossTitle, ' vs. AC'];['DC = ',DCstr,' , AC = ',ACstr];runTitle};
+            titleStr = {[LossTitle, ' vs. F & T'];['DC = ',DCstr,' , AC = ',ACstr];runTitle};
         end
         surf(handles.axsPlot,X,Y,1000.*lossT,'FaceColor','interp','FaceLighting','gouraud');
         xlabel(handles.axsPlot,'Frequency [Hz]');ylabel(handles.axsPlot,'Temperature [K]');
@@ -592,8 +594,8 @@ switch yVar(yind)*xVar(xind)
         if comp
             mLoss2 = Loss2{tind}; mLoss2 = reshape(mLoss2(:,ffind2,:),size(mLoss2,1),size(mLoss2,3),1);
             mLoss = mLoss - mLoss2;
-            titleStr = {[LossTitle, ' vs. DC & AC'];runTitle;...
-                ['T = ',TempStr,' , F = ',Fstr];...
+            titleStr = {[LossTitle, ' vs. DC & AC'];...
+                [runTitle,' @ T = ',TempStr,' , F = ',Fstr];...
                 ['vs. ',runTitle2,' @ T = ',TempStr2,' , F = ',Fstr2]};
         else
             titleStr = {[LossTitle, ' vs. DC & AC'];['T = ',TempStr,' , F = ',Fstr];runTitle};
@@ -624,11 +626,11 @@ switch yVar(yind)*xVar(xind)
                 lossT2(tind,:) = LossAll(:,ffind2,dcind2)';
             end
             lossT = lossT - lossT2;
-            titleStr = {[LossTitle, ' vs. AC & T'];runTitle;...
-                [' , DC = ',DCstr,' , F = ',Fstr];...
+            titleStr = {[LossTitle, ' vs. AC & T'];...
+                [runTitle ' @ DC = ',DCstr,' , F = ',Fstr];...
                 ['vs. ',runTitle2,' @ DC = ',DCstr2,' , F = ',Fstr2]};
         else
-            titleStr = {[LossTitle, ' vs. AC'];['DC = ',DCstr,' , F = ',Fstr];runTitle};
+            titleStr = {[LossTitle, ' vs. AC & T'];['DC = ',DCstr,' , F = ',Fstr];runTitle};
         end
         surf(handles.axsPlot,X,Y,1000.*lossT,'FaceColor','interp','FaceLighting','gouraud');
         xlabel(handles.axsPlot,'AC Current RMS [A]');ylabel(handles.axsPlot,'Temperature [K]');
@@ -659,8 +661,8 @@ switch yVar(yind)*xVar(xind)
                 lossT2(tind,:) = reshape(LossAll(acind2,ffind2,:),1,size(LossAll,3),1);
             end
             lossT = lossT - lossT2;
-            titleStr = {[LossTitle, ' vs. DC & T'];runTitle;...
-                ['AC = ',ACstr,' , F = ',Fstr];...
+            titleStr = {[LossTitle, ' vs. DC & T'];...
+                [runTitle,' @ AC = ',ACstr,' , F = ',Fstr];...
                 ['vs. ',runTitle2,' @ AC = ',ACstr2,' , F = ',Fstr2]};
         else
             titleStr = {[LossTitle, ' vs. AC'];['AC = ',ACstr,' , F = ',Fstr];runTitle};
@@ -683,7 +685,13 @@ function btnSave_Callback(hObject, eventdata, handles)
 % hObject    handle to btnSave (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-FileName = '';% get(handles.file_name_edit,'String');  % get the desired filename
+th = get(handles.axsPlot,'Title');
+titleStr = get(th,'string');
+FileName = strjoin(titleStr,'_');
+% FileName = strrep(FileName,' ','');
+FileName = strrep(FileName,'.','');
+FileName = strrep(FileName,',','_');
+% FileName = '';% get(handles.file_name_edit,'String');  % get the desired filename
 dataPath = getappdata(0,'dataPath');
 [FileName,dir] = uiputfile('*.png','Save Script',[dataPath FileName]);
 if ~dir
@@ -691,14 +699,14 @@ if ~dir
     return;
 end
 FileName = [dir,FileName(1:end-4)];
-NewFig = figure;
+NewFig = figure('units','inches','position',[0.5 0.5 2 1.5]*3.5);
 ax_new = copyobj(handles.axsPlot,NewFig);
 % hgsave(NewFig, 'myFigure.fig');
 % set(NewFig,'units','inches');
 % set(NewFig,'position',[0.25 0.25 0.5 0.5]);
 % pos = get(NewFig,'Innerposition');
-set(ax_new,'units','normalized','Position',[0.1 0.15 0.85 0.77]);
-print(NewFig,FileName,'-r300','-dpng');
+set(ax_new,'units','normalized','Position',[0.1 0.1 0.85 0.77]);
+print(NewFig,FileName,'-r400','-dpng');
 close(NewFig);
 winopen([FileName,'.png']);
 
@@ -708,13 +716,13 @@ function btnOpen_Callback(hObject, eventdata, handles)
 % hObject    handle to btnOpen (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-NewFig = figure;
+NewFig = figure('units','inches','position',[0.5 0.5 2 1.5]*3.5);
 ax_new = copyobj(handles.axsPlot,NewFig);
 % hgsave(NewFig, 'myFigure.fig');
 % set(NewFig,'units','normalized');
 % set(NewFig,'position',[0.25 0.25 0.5 0.5]);
 % pos = get(NewFig,'Innerposition');
-set(ax_new,'units','normalized','Position',[0.1 0.15 0.85 0.77]);
+set(ax_new,'units','normalized','Position',[0.1 0.1 0.85 0.77]);
 
 
 % --- Executes on selection change in mnuX.

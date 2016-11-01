@@ -203,7 +203,7 @@ function btnLoad_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 defPath = getappdata(0,'dataPath');
-[FileName,FilePath] = uigetfile([defPath '\*.mat'],'Select the file containing the data. 2 files for comparision.');
+[FileName,FilePath] = uigetfile([defPath '\*.mat'],'Select the file containing the datas');
 
 if FileName==0
     errordlg('Error Reading File','Error 0x002');
@@ -273,7 +273,7 @@ function compFig_CloseRequestFcn(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 try
     plotFig = findall(0, 'Type', 'figure', 'Tag', 'plotFig');
-    handles = guihandles(plotFig);
+    handles = guidata(plotFig);
     set(handles.chkComp,'value',0);
     guidata(handles.plotFig,handles);
 catch
