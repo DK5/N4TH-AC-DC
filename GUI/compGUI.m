@@ -22,7 +22,7 @@ function varargout = compGUI(varargin)
 
 % Edit the above text to modify the response to help compGUI
 
-% Last Modified by GUIDE v2.5 30-Oct-2016 14:33:06
+% Last Modified by GUIDE v2.5 01-Nov-2016 10:24:34
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -59,7 +59,7 @@ handles.output = hObject;
 guidata(hObject, handles);
 
 % UIWAIT makes compGUI wait for user response (see UIRESUME)
-% uiwait(handles.figure1);
+% uiwait(handles.compFig);
 
 
 % --- Outputs from this function are returned to the command line.
@@ -264,3 +264,19 @@ for ind = 1:length(FieldNames)
     end
 end
 FieldNames(eind) = [];
+
+
+% --- Executes when user attempts to close compFig.
+function compFig_CloseRequestFcn(hObject, eventdata, handles)
+% hObject    handle to compFig (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+try
+    plotFig = findall(0, 'Type', 'figure', 'Tag', 'plotFig');
+    handles = guihandles(plotFig);
+    set(handles.chkComp,'value',0);
+    guidata(handles.plotFig,handles);
+catch
+end
+% Hint: delete(hObject) closes the figure
+delete(hObject);
