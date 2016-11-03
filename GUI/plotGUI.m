@@ -126,8 +126,8 @@ if ~iscell(FileName)
         cLoss{tind} = mloss;
         cLossH3{tind} = mlossH3;
         F = data.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]).frequency;
-        cLossPC{tind} = mloss./repmat(F,size(mloss,1),1,size(mloss,3));
-        cLossH3PC{tind} = mlossH3./repmat(F,size(mlossH3,1),1,size(mlossH3,3));
+        cLossPC{tind} = mloss./repmat(F,[size(mloss,1),1,size(mloss,3)]);
+        cLossH3PC{tind} = mlossH3./repmat(F,[size(mlossH3,1),1,size(mlossH3,3)]);
     end
 elseif length(FileName)==2
     
