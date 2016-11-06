@@ -227,10 +227,10 @@ fStr = get(handles.edtFreq,'string');
 frequency = str2num(cell2mat(strsplit(fStr)));
 
 acStr = get(handles.edtAC,'string');
-AClist = str2num(cell2mat(strsplit(acStr)));
+AClist = str2num(acStr);
 
 dcStr = get(handles.edtDC,'string');
-DClist = str2num(cell2mat(strsplit(dcStr)));
+DClist = str2num(dcStr);
 
 runTitle = getappdata(0,'runTitle');
 config = getappdata(0,'defAns');
@@ -249,6 +249,7 @@ Isrc = getappdata(0,'Isrc');
 
 spTemp = getappdata(0,'TempSet');
 tempStr = ['T' num2str(spTemp) 'K'];
+runStr = get(handles.txtRunTitle,'string');
 
 try
     % try to load previously written file
@@ -258,8 +259,10 @@ try
     if tf
         vind = find(runTitle=='v','last');
         runTitle(vind+1:end) = num2str(str2double(runTitle(vind+1:end))+1);
+        data.runtitle = runTitle;
     end
 catch
+    data.runtitle = runTitle;
     data.volume = volume;
 end
 
@@ -268,7 +271,7 @@ supVoltage(5,pwr_obj);  % supply 5V (DC)
 
 for iDC = DClist
     HP8904A( fg, 0, 440, 'sine', 2, 'on', 'B'); % turn off function generator
-    dcI = setDC(iDC,Ilimit ,pwr_obj,N4TH);      % supply DC current
+    dcI = setDC(iDC,Ilimit,pwr_obj,N4TH);       % supply DC current
     DCstr = ['DC',num2str(round(dcI)),'A'];
     [outAC,amp] = setAC(AClist(end),frequency(end),fg,N4TH);   % set AC current
     HP8904A( fg, 0, 440, 'sine', 2, 'on', 'B') % turn off function generator
@@ -602,6 +605,7 @@ function btnSetTemp_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 spTemp = str2double(get(handles.edtTemp,'string'));
+setappdata(0,'TempSet',spTemp);
 setRunTitle(handles);
 % MeasConf = getappdata(0,'defAnsMeas');
 % Rth = str2double(MeasConf{2});

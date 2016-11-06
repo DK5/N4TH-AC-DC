@@ -26,14 +26,19 @@ pause(0.6);
 
 % read AC current
 fprintf(N4TH,'COUPLI,PHASE1,ACONLY'); % set AC coupling
-fprintf(N4TH,'FAST,ON');	% fast communication mode - on
+% fprintf(N4TH,'FAST,ON');	% fast communication mode - on
 pause(1);
 outAC = getAC(N4TH);
 
 ind = 1;    
 % feedback loop
-while abs(outAC/iAC - 1) > 0.004
-    amp = amp*(iAC/outAC);  % fixing voltage amplitude
+while abs(outAC/iAC - 1) > 0.005
+%     if abs(iAC - outAC) < 0.05*iAC
+%         amp = amp + 0.01*amp*sign(iAC - outAC);
+%     else
+
+        amp = amp*(iAC/outAC);  % fixing voltage amplitude
+%     end
     if amp >= 1.8 && ind <= 3
         % if amplitude is too high and its under the 3rd try
         fprintf ('Try %i\n',ind);
@@ -49,9 +54,10 @@ while abs(outAC/iAC - 1) > 0.004
         % turn off function generator and break
         amp = 0; HP8904A(fg,amp,f,'sine',2,'on','B'); break;
     end
-    
+    amp
     HP8904A(fg,amp,f,'sine',2,'on','B');
-    outAC = getAC(N4TH);  % get AC current
+    pause(1.5);
+    outAC = getAC(N4TH)  % get AC current
 end
 
 fprintf(N4TH,'FAST,OFF');   % fast communication mode - off

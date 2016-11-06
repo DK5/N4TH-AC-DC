@@ -1,6 +1,6 @@
 function setDCpid( iDC ,errInterval, limitDC , pwr_obj , N4TH )
 tic;
-figure('Name','Temperature control');  % open fig
+figure(5);  % open fig
 err = [];   % declare variable
 errInterval = errInterval;
 
@@ -16,13 +16,14 @@ pHandle = plot(1:length(err),iDC - err*iDC,'-ob',...
     [1 length(err)],[iDC iDC],'-r',...
     [1 length(err)],(1-errInterval)*[iDC iDC],'-g',...
     [1 length(err)],(1+errInterval)*[iDC iDC],'-g');
-ylim([measDC 1.5*iDC]); hold off;
+% ylim([measDC 1.5*iDC]); hold off;
 
 
 % PID constants
 % u(t) = Kp*e(t) + Ki*integral({0,t},e(\tau),d\tau) + Kd*(de/dt)
-dt = 0.1; cor = 10;
-Kp = 5; Ki = 0; Kd = 0; Kt = 0.3;
+dt = 0.1; cor = 10; steady = 0;
+Kp = 5; Ki = 0; Kd = 0; Kt = 0.4;
+steps = 10;
 
 stable = 0;
 while ~stable
@@ -34,13 +35,19 @@ while ~stable
     intg = trapz(err)*dt;
     derr = (err(end-1) - err(end))/dt;
 
-    u = Kt*(Kp*err(end)+Ki*intg+Kd*derr)
+    u = Kt*(Kp*err(end)+Ki*intg+Kd*derr);
     outDC = (1+u)*iDC;
     outDC = outDC*(outDC>0);
 
-    if u < 0 || err(end) < errInterval
-        outDC = iDC;
-    else
+    if steady || (u < 0 && abs(err(end)) < 3*errInterval)
+        for ind = 1:steps
+            outDC = (ind/steps)*iDC;
+            pause(0.4);
+        end
+        steady = 1;
+    elseif u < 0 && ~steady
+        outDC = 0;
+    elseif ~steady
         outDC = (1+u)*iDC;
     end
     
