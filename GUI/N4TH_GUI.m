@@ -354,10 +354,12 @@ for iDC = DClist
     data.(tempStr).(DCstr).runtitle = runTitle;   
     save(['C:\Users\Measurements PC\Dropbox\HTS Lab\Measurment PC\MATLAB\Data\' runTitle],'data');
     % Plot and figure save
-    lossplot_GUI(data.(tempStr).(DCstr),handles);
-    h = lossplot(data.(tempStr).(DCstr));
-    hgsave(h,['C:\Users\Measurements PC\Dropbox\HTS Lab\Measurment PC\MATLAB\Figures\' runTitle])
-    close(h);
+    if length(AClist) > 1 && length(frequency) > 1
+        lossplot_GUI(data.(tempStr).(DCstr),handles);
+        h = lossplot(data.(tempStr).(DCstr));
+        hgsave(h,['C:\Users\Measurements PC\Dropbox\HTS Lab\Measurment PC\MATLAB\Figures\' runTitle])
+        close(h);
+    end
 end
 outputHP(0,pwr_obj);    % turn off DC supply
 

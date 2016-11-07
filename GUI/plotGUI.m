@@ -121,7 +121,12 @@ if ~iscell(FileName)
         mlossH3 = zeros(length(ACstr),length(Fstr),length(DCstr));
         for dcind = 1:length(DCstr)
             mloss(:,:,dcind) = data.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]).loss;
-            mlossH3(:,:,dcind) = data.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]).lossH3;
+            try
+                mlossH3(:,:,dcind) = data.(['T' TempStr{tind}]).(['DC' DCstr{dcind}]).lossH3;
+            catch
+                % no loss H3
+                errordlg(['Couldn''t find loosH3 field in T' TempStr{tind} ' DC' DCstr{dcind}]);
+            end
         end
         cLoss{tind} = mloss;
         cLossH3{tind} = mlossH3;
